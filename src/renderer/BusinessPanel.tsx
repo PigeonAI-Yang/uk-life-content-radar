@@ -14,7 +14,9 @@ type Proposal = {
 };
 type Lead = {
   id: string; nickname: string; platform: string; stage: string; coreNeed: string;
-  nextAction: string; version: number; conversations: { id: string; summary: string; confirmationStatus: string }[];
+  nextAction: string; nextFollowUpAt: string | null; version: number;
+  sourceContent: { id: string; title: string } | null; product: { id: string; name: string } | null;
+  conversations: { id: string; summary: string; confirmationStatus: string; originalFile: FileReadback }[];
 };
 
 export function BusinessPanel() {
@@ -128,6 +130,12 @@ export function BusinessPanel() {
 
   const changeProduct = (key: keyof typeof product) => (_: unknown, data: { value: string }) =>
     setProduct((current) => ({ ...current, [key]: data.value }));
+  const stageNames: Record<string, string> = {
+    new_message: '新私信', need_understood: '已了解需求', wechat_added: '已加微信',
+    negotiating: '洽谈中', won: '已成交', lost: '未成交'
+  };
+  const today = new Date().toISOString().slice(0, 10);
+  const due = leads.filter((item) => item.nextFollowUpAt?.slice(0, 10) === today);
 
   return <section className="business-workspace">
     <div className="account-toolbar">
@@ -140,6 +148,12 @@ export function BusinessPanel() {
       <span>{accountId ? '经营资料只写入当前账号' : '请先在“账号”中建立账号'}</span>
     </div>
     {message && <MessageBar><MessageBarBody>{message}</MessageBarBody></MessageBar>}
+    <div className="dashboard-metrics">
+      <article><span>当前产品</span><strong>{products.length}</strong></article>
+      <article><span>待批准建议</span><strong>{proposals.filter((item) => item.status === 'pending').length}</strong></article>
+      <article><span>洽谈中的客户</span><strong>{leads.filter((item) => item.stage === 'negotiating').length}</strong></article>
+      <article><span>今天要跟进</span><strong>{due.length}</strong></article>
+    </div>
     <div className="business-columns">
       <section>
         <h2>产品与服务</h2>
@@ -193,10 +207,18 @@ export function BusinessPanel() {
           <Button disabled={!conversation.text || !conversation.summary} onClick={importConversation}>保存沟通原件</Button>
         </div>
         {leads.map((item) => <article className="business-card" key={item.id}>
-          <strong>{item.nickname}</strong><span>{item.stage} · {item.platform}</span>
+          <strong>{item.nickname}</strong><span>{stageNames[item.stage] ?? item.stage} · {item.platform}</span>
           <p>{item.coreNeed || '需求待了解'}；下一步：{item.nextAction || '待安排'}</p>
+          <span>来源帖子：{item.sourceContent?.title ?? '尚未关联'} · 产品：{item.product?.name ?? '尚未关联'}</span>
           {!['won', 'lost'].includes(item.stage) && <Button onClick={() => advanceLead(item)}>推进到下一阶段</Button>}
-          <small>{item.conversations.length} 条沟通记录</small>
+          {item.conversations.map((record) => <div key={record.id}>
+            <small>{record.confirmationStatus === 'pending' ? '待确认' : '已确认'} · {
+              record.originalFile.fileStatus === 'missing' ? '原始文件缺失，请重新导入' :
+              record.originalFile.fileStatus === 'modified' ? '原始文件已被外部修改，请核对' : '原始文件正常'
+            }</small>
+            {record.originalFile.fileStatus !== 'missing' && <Button size="small" onClick={() => window.terminal.system.openPath(record.originalFile.filePath)}>打开原始文件</Button>}
+          </div>)}
+          {!item.conversations.length && <small>还没有沟通记录，可在上方粘贴私信或微信对话。</small>}
         </article>)}
       </section>
     </div>

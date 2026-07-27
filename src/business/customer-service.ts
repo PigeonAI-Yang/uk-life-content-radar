@@ -28,6 +28,12 @@ export class CustomerService {
   getLead(id: string) {
     const row = this.database.prepare('SELECT * FROM leads WHERE id=?').get(id) as Row | undefined;
     if (!row) throw new BusinessError('NOT_FOUND', '客户线索不存在', '检查客户标识', id);
+    const sourceContent = row.source_content_id
+      ? this.database.prepare('SELECT id, title FROM content_projects WHERE id=?').get(row.source_content_id)
+      : null;
+    const product = row.product_id
+      ? this.database.prepare('SELECT id, name FROM products WHERE id=?').get(row.product_id)
+      : null;
     return {
       id: String(row.id), accountId: String(row.account_id),
       productId: row.product_id ? String(row.product_id) : null,
@@ -38,6 +44,7 @@ export class CustomerService {
       wechatAdded: Boolean(row.wechat_added), nextAction: String(row.next_action),
       nextFollowUpAt: row.next_follow_up_at ? String(row.next_follow_up_at) : null,
       version: Number(row.version), status: String(row.status),
+      sourceContent, product,
       conversations: this.listConversations(String(row.id)).items,
       deals: this.database.prepare('SELECT * FROM deals WHERE lead_id=? ORDER BY decided_at DESC').all(row.id)
     };

@@ -77,7 +77,7 @@ try {
     if (globalThis.process.env.UI_RECEIPT_ID === 'UIR-003' && ['浏览与收集', '素材库', '发布包', '账号', '任务', '设置'].includes(route)) {
       await page.evaluate((filePath) => globalThis.terminal.system.capturePage(filePath), resolve(receiptDirectory, `${route}.png`));
     }
-    if (['BIZ-002', 'BIZ-003'].includes(globalThis.process.env.UI_RECEIPT_ID ?? '') && route === '经营') {
+    if (['BIZ-002', 'BIZ-003', 'BIZ-004'].includes(globalThis.process.env.UI_RECEIPT_ID ?? '') && route === '经营') {
       await page.evaluate((filePath) => globalThis.terminal.system.capturePage(filePath), resolve(receiptDirectory, '经营.png'));
     }
   }
