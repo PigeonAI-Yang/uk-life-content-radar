@@ -6,7 +6,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { randomUUID } from 'node:crypto';
 import type { ZodType } from 'zod';
-import { commandSchemas, type CommandName } from '../contracts/commands';
+import { commandSchemas, humanOnlyCommands, type CommandName } from '../contracts/commands';
 import type { DispatchResult } from '../business/dispatcher';
 
 type Discovery = { pipeName: string };
@@ -44,7 +44,7 @@ function pipeCall(command: string, input: unknown) {
 
 const server = new McpServer({ name: 'content-media-terminal', version: '0.1.0' });
 for (const [name, schema] of Object.entries(commandSchemas)) {
-  if (name === 'approval.approve') continue;
+  if (humanOnlyCommands.has(name as CommandName)) continue;
   server.registerTool(name, {
     description: `自媒体桌面终端统一业务能力：${name}`,
     inputSchema: schema as ZodType<Record<string, unknown>>

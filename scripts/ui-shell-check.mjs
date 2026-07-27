@@ -68,7 +68,7 @@ try {
   if (globalThis.process.env.UI_RECEIPT_ID === 'UIR-002') {
     await page.evaluate((filePath) => globalThis.terminal.system.capturePage(filePath), resolve(receiptDirectory, 'workbench.png'));
   }
-  for (const route of ['浏览与收集', '资料库', '内容', '素材库', '发布包', '账号', '任务', '设置']) {
+  for (const route of ['浏览与收集', '资料库', '内容', '素材库', '发布包', '经营', '账号', '任务', '设置']) {
     await page.getByRole('button', { name: route }).click();
     await page.getByRole('heading', { name: route, exact: true }).waitFor();
     if (globalThis.process.env.UI_RECEIPT_ID === 'UIR-002' && ['资料库', '内容'].includes(route)) {
@@ -76,6 +76,9 @@ try {
     }
     if (globalThis.process.env.UI_RECEIPT_ID === 'UIR-003' && ['浏览与收集', '素材库', '发布包', '账号', '任务', '设置'].includes(route)) {
       await page.evaluate((filePath) => globalThis.terminal.system.capturePage(filePath), resolve(receiptDirectory, `${route}.png`));
+    }
+    if (globalThis.process.env.UI_RECEIPT_ID === 'BIZ-002' && route === '经营') {
+      await page.evaluate((filePath) => globalThis.terminal.system.capturePage(filePath), resolve(receiptDirectory, '经营.png'));
     }
   }
   if (globalThis.process.env.UI_RECEIPT_ID === 'UIR-004') {

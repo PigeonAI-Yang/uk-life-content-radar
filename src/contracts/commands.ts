@@ -12,6 +12,7 @@ const sourceId = z.object({ sourceId: z.string().min(1) }).strict();
 const contentId = z.object({ contentId: z.string().min(1) }).strict();
 const assetId = z.object({ assetId: z.string().min(1) }).strict();
 const candidateId = z.object({ candidateId: z.string().min(1) }).strict();
+const accountId = z.object({ accountId: z.string().min(1) }).strict();
 const metadata = {
   topic: z.string().default(''),
   region: z.string().default(''),
@@ -66,6 +67,43 @@ export const commandSchemas = {
     defaultTemplates: z.record(z.string(), z.string()).optional()
   }).strict(),
   'account.search': search,
+  'product.create': z.object({
+    ...idempotent,
+    accountId: z.string().min(1),
+    name: z.string().trim().min(1),
+    targetCustomer: z.string().min(1),
+    problem: z.string().min(1),
+    priceRange: z.string().min(1),
+    serviceScope: z.string().min(1),
+    suitableFor: z.string().default(''),
+    unsuitableFor: z.string().default('')
+  }).strict(),
+  'product.get': id,
+  'product.update': versioned.extend({
+    name: z.string().trim().min(1).optional(),
+    targetCustomer: z.string().min(1).optional(),
+    problem: z.string().min(1).optional(),
+    priceRange: z.string().min(1).optional(),
+    serviceScope: z.string().min(1).optional(),
+    suitableFor: z.string().optional(),
+    unsuitableFor: z.string().optional()
+  }).strict(),
+  'product.list': z.object({ accountId: z.string().min(1).optional() }).strict(),
+  'strategy.propose': z.object({
+    ...idempotent,
+    accountId: z.string().min(1),
+    productId: z.string().min(1).optional(),
+    proposalType: z.enum(['product', 'audience', 'positioning', 'price', 'promise', 'conversion']),
+    proposed: z.record(z.string(), z.unknown()),
+    rationale: z.string().min(1),
+    evidence: z.array(z.string().min(1)).default([]),
+    successMeasure: z.string().min(1)
+  }).strict(),
+  'strategy.get': id,
+  'strategy.list': accountId.extend({
+    status: z.enum(['pending', 'approved', 'rejected', 'invalidated']).optional()
+  }).strict(),
+  'strategy.approve': versioned,
   'browser.tabs.list': z.object({}).strict(),
   'collect.webpage': z.object({ ...idempotent, tabId: z.string().min(1), destination: z.enum(['library', 'content']) }).strict(),
   'collect.selection': z.object({ ...idempotent, tabId: z.string().min(1), destination: z.enum(['library', 'content']) }).strict(),
@@ -150,3 +188,7 @@ export const commandSchemas = {
 } as const;
 
 export type CommandName = keyof typeof commandSchemas;
+export const humanOnlyCommands: ReadonlySet<CommandName> = new Set([
+  'approval.approve',
+  'strategy.approve'
+]);

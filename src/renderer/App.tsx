@@ -8,6 +8,7 @@ import {
 } from '@fluentui/react-components';
 import {
   BoxRegular,
+  BriefcaseRegular,
   EditRegular,
   GlobeRegular,
   HomeRegular,
@@ -29,6 +30,7 @@ import { BrowserPanel } from './BrowserPanel';
 import { LibraryPanel } from './LibraryPanel';
 import { ContentEditorPanel } from './ContentEditorPanel';
 import { AssetPanel } from './AssetPanel';
+import { BusinessPanel } from './BusinessPanel';
 import './app.css';
 
 export function App() {
@@ -50,6 +52,7 @@ export function App() {
     内容: <EditRegular />,
     素材库: <ImageRegular />,
     发布包: <BoxRegular />,
+    经营: <BriefcaseRegular />,
     账号: <PersonRegular />,
     任务: <TaskListSquareLtrRegular />,
     设置: <SettingsRegular />
@@ -107,7 +110,7 @@ export function App() {
           <div className="page-heading">
             <h1>{route}</h1>
           </div>
-          {route === '设置' ? <SettingsPanel /> : route === '账号' ? <AccountPanel /> : route === '任务' ? <TaskPanel /> : route === '工作台' ? <MinimumLoopPanel /> : route === '内容' ? <ContentEditorPanel /> : route === '发布包' ? <PublishingPanel /> : route === '浏览与收集' ? <BrowserPanel /> : route === '资料库' ? <LibraryPanel /> : <AssetPanel />}
+          {route === '设置' ? <SettingsPanel /> : route === '账号' ? <AccountPanel /> : route === '任务' ? <TaskPanel /> : route === '工作台' ? <MinimumLoopPanel /> : route === '内容' ? <ContentEditorPanel /> : route === '发布包' ? <PublishingPanel /> : route === '经营' ? <BusinessPanel /> : route === '浏览与收集' ? <BrowserPanel /> : route === '资料库' ? <LibraryPanel /> : <AssetPanel />}
         </main>
       </div>
     </FluentProvider>

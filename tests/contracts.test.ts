@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { commandSchemas } from '../src/contracts/commands';
+import { commandSchemas, humanOnlyCommands } from '../src/contracts/commands';
 import { errorCodes } from '../src/contracts/errors';
 
 describe('统一业务契约', () => {
-  it('登记 SPEC 6.1 与 TASK-010 的 77 个明确命令与查询', () => {
-    expect(Object.keys(commandSchemas)).toHaveLength(77);
+  it('登记统一业务命令与查询', () => {
+    expect(Object.keys(commandSchemas)).toHaveLength(85);
     expect(commandSchemas).toHaveProperty('account.create');
     expect(commandSchemas).toHaveProperty('collect.webpage');
     expect(commandSchemas).toHaveProperty('resource.search');
@@ -17,6 +17,9 @@ describe('统一业务契约', () => {
     expect(commandSchemas).toHaveProperty('saved_view.create');
     expect(commandSchemas).toHaveProperty('saved_view.get');
     expect(commandSchemas).toHaveProperty('saved_view.list');
+    expect(commandSchemas).toHaveProperty('product.create');
+    expect(commandSchemas).toHaveProperty('strategy.approve');
+    expect(humanOnlyCommands.has('strategy.approve')).toBe(true);
   });
 
   it('拒绝空账号名和未声明字段', () => {

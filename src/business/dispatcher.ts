@@ -14,6 +14,7 @@ import type { BrowserManager } from '../main/browser-manager';
 import { LibraryService } from './library-service';
 import { SearchService } from './search-service';
 import { AssetService } from './asset-service';
+import { BusinessManagementService } from './business-management-service';
 
 type Account = {
   id: string;
@@ -59,6 +60,7 @@ export class CommandDispatcher {
   private readonly library: LibraryService;
   private readonly search: SearchService;
   private readonly assets: AssetService;
+  private readonly management: BusinessManagementService;
 
   constructor(private readonly database: Database.Database, private readonly rootPath: string, browser: BrowserManager) {
     this.tasks = new TaskService(database, rootPath);
@@ -68,6 +70,7 @@ export class CommandDispatcher {
     this.library = new LibraryService(database, rootPath, this.core);
     this.search = new SearchService(database);
     this.assets = new AssetService(database, rootPath);
+    this.management = new BusinessManagementService(database, rootPath);
   }
 
   async dispatch(name: string, input: unknown): Promise<DispatchResult> {
@@ -95,6 +98,27 @@ export class CommandDispatcher {
     if (command === 'account.get') return this.getAccount(String(input.id));
     if (command === 'account.update') return this.updateAccount(input);
     if (command === 'account.search') return this.searchAccounts(String(input.query), Number(input.limit));
+    if (command === 'product.create') {
+      return this.runIdempotent(command, input, () => this.management.createProduct(input));
+    }
+    if (command === 'product.get') return this.management.getProduct(String(input.id));
+    if (command === 'product.update') return this.management.updateProduct(input);
+    if (command === 'product.list') {
+      return this.management.listProducts(input.accountId ? String(input.accountId) : undefined);
+    }
+    if (command === 'strategy.propose') {
+      return this.runIdempotent(command, input, () => this.management.proposeStrategy(input));
+    }
+    if (command === 'strategy.get') return this.management.getStrategy(String(input.id));
+    if (command === 'strategy.list') {
+      return this.management.listStrategies(
+        String(input.accountId),
+        input.status ? String(input.status) : undefined
+      );
+    }
+    if (command === 'strategy.approve') {
+      return this.management.approveStrategy(String(input.id), Number(input.expectedVersion));
+    }
     if (command === 'task.start') return this.tasks.start(input);
     if (command === 'task.get') return this.tasks.get(String(input.taskId));
     if (command === 'task.list') return this.tasks.list(String(input.query), Number(input.limit));
