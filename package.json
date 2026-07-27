@@ -1,0 +1,87 @@
+{
+  "name": "content-media-terminal",
+  "productName": "自媒体桌面终端",
+  "version": "0.1.0",
+  "description": "Windows 本地优先的自媒体桌面终端",
+  "author": "PigeonYang",
+  "main": ".webpack/main",
+  "private": true,
+  "scripts": {
+    "start": "electron-forge start",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "rebuild:native": "electron-rebuild --version 43.2.0 --only better-sqlite3 --force",
+    "build:mcp": "webpack --config webpack.mcp.config.mjs",
+    "prebuild": "npm run rebuild:native && npm run build:mcp",
+    "build": "electron-forge package",
+    "premake": "node scripts/prepare-squirrel.mjs",
+    "make": "electron-forge make",
+    "test:startup": "node scripts/startup-check.mjs",
+    "test:ui-shell": "node scripts/ui-shell-check.mjs",
+    "test:task-001": "node scripts/task-001-check.mjs",
+    "test:task-002": "node scripts/task-002-check.mjs",
+    "test:task-003": "node scripts/task-003-check.mjs"
+    ,"test:task-004": "node scripts/task-004-check.mjs",
+    "test:task-005": "node scripts/task-005-check.mjs"
+    ,"test:task-006": "node scripts/task-006-check.mjs",
+    "test:task-007": "node scripts/task-007-check.mjs"
+    ,"test:task-008": "node scripts/task-008-check.mjs",
+    "test:task-009": "node scripts/task-009-check.mjs",
+    "test:task-010": "node scripts/task-010-check.mjs",
+    "test:task-011": "node scripts/task-011-check.mjs",
+    "test:task-012": "node scripts/task-012-check.mjs",
+    "test:task-013": "node scripts/task-013-check.mjs",
+    "test:task-014:rules": "node scripts/task-014-platform-rules-check.mjs",
+    "test:task-014": "node scripts/task-014-check.mjs"
+    ,"test:task-015": "node scripts/task-015-check.mjs"
+    ,"test:task-016": "node scripts/task-016-check.mjs"
+    ,"test:task-017": "node scripts/task-017-check.mjs"
+    ,"test:task-018": "node scripts/task-018-check.mjs"
+    ,"test:task-019": "node scripts/task-019-check.mjs"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "7.11.2",
+    "@electron-forge/maker-squirrel": "7.11.2",
+    "@electron-forge/maker-zip": "7.11.2",
+    "@electron-forge/plugin-auto-unpack-natives": "7.11.2",
+    "@electron-forge/plugin-fuses": "7.11.2",
+    "@electron-forge/plugin-webpack": "7.11.2",
+    "@electron-forge/shared-types": "7.11.2",
+    "@electron/fuses": "1.8.0",
+    "@electron/rebuild": "4.2.0",
+    "@vercel/webpack-asset-relocator-loader": "1.10.0",
+    "@eslint/js": "9.39.4",
+    "@playwright/test": "1.62.0",
+    "@types/node": "24.10.13",
+    "@types/electron-squirrel-startup": "1.0.2",
+    "@types/better-sqlite3": "7.6.13",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "css-loader": "7.1.2",
+    "electron": "43.2.0",
+    "eslint": "9.39.4",
+    "eslint-plugin-react-hooks": "7.0.1",
+    "node-loader": "2.1.0",
+    "style-loader": "4.0.0",
+    "ts-loader": "9.5.4",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.57.1",
+    "vitest": "4.1.10",
+    "webpack": "5.109.0",
+    "webpack-cli": "6.0.1"
+  },
+  "dependencies": {
+    "@fluentui/react-components": "9.74.4",
+    "@fluentui/react-icons": "2.0.317",
+    "@lexical/react": "0.48.0",
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "better-sqlite3": "13.0.1",
+    "electron-squirrel-startup": "1.0.1",
+    "lexical": "0.48.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "sharp": "0.35.3",
+    "zod": "4.4.3"
+  }
+}

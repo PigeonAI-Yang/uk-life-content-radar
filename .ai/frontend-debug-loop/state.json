@@ -1,0 +1,17 @@
+{
+  "active_loop": "human-acceptance-ui-audit",
+  "status": "investigating",
+  "symptom": "用户质疑已交付应用是否具有目标要求的完整 UI",
+  "observation_packet": null,
+  "hypotheses": [
+    {
+      "id": "H1",
+      "claim": "九模块只是测试壳或表单集合，没有形成可用产品界面",
+      "would_disprove": "真实验收入口的九个路由均呈现对应业务对象、操作和状态，并能消费项目内真实数据"
+    }
+  ],
+  "breakpoint": null,
+  "owner_check": null,
+  "attempts": 0,
+  "last_gate": null
+}

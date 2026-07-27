@@ -1,0 +1,4 @@
+interface:
+  display_name: "英国生活内容雷达"
+  short_description: "追踪英国官方与在英博主资讯并转化为可核验的小红书选题"
+  default_prompt: "Use $uk-life-content-radar to collect and verify current UK life intelligence, then turn it into Xiaohongshu topic cards for Chinese people in the UK."

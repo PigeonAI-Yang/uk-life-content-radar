@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>自媒体桌面终端 · UI 重构原型</title>
+  <style>
+    :root{font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:#242424;background:#f5f5f5;--blue:#0f6cbd;--blue2:#ebf3fc;--line:#dedede;--muted:#616161;--surface:#fff;--soft:#f7f7f7;--green:#0e7c3a;--amber:#8a5700;--red:#c50f1f}
+    *{box-sizing:border-box} body{margin:0;font-size:14px} button,input,select,textarea{font:inherit} button{cursor:pointer}
+    :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+    .app{display:grid;grid-template:48px 1fr/176px 1fr;height:100vh;min-width:1120px}
+    .topbar{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:0 14px;background:#fff;border-bottom:1px solid var(--line)}
+    .brand{font-size:15px;font-weight:650;white-space:nowrap}.prototype{font-size:12px;color:var(--muted);border-left:1px solid var(--line);padding-left:12px}
+    .search{margin-left:auto;width:min(430px,38vw);height:32px;border:1px solid #bdbdbd;border-radius:6px;padding:0 11px;background:#fafafa}
+    .top-action,.icon-btn{height:32px;border:1px solid var(--line);border-radius:6px;background:#fff;color:#333;padding:0 10px}.icon-btn{width:34px;padding:0}
+    .sidebar{background:#fafafa;border-right:1px solid var(--line);padding:10px 8px;overflow:auto}
+    .nav{display:flex;flex-direction:column;gap:2px}.nav button{height:36px;border:0;border-radius:6px;background:transparent;text-align:left;padding:0 10px;color:#333}
+    .nav button:hover{background:#f0f0f0}.nav button.active{background:#e9e9e9;color:#242424;font-weight:650}
+    .nav .glyph{display:inline-block;width:23px;color:var(--muted)}.nav-footer{border-top:1px solid var(--line);margin-top:10px;padding-top:10px}
+    main{overflow:auto;padding:16px 18px 28px}.view{display:none;max-width:1500px;margin:0 auto}.view.active{display:block}
+    .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:14px}.page-head h1{font-size:22px;margin:0 0 3px}.subtitle{color:var(--muted);font-size:13px}
+    .actions{display:flex;gap:8px;align-items:center}.primary,.secondary,.danger{height:34px;border-radius:6px;padding:0 13px;font-weight:600}.primary{background:var(--blue);color:#fff;border:1px solid var(--blue)}.secondary{background:#fff;border:1px solid #aaa}.danger{background:#fff;border:1px solid #d38b93;color:var(--red)}
+    .panel{background:var(--surface);border:1px solid #e7e7e7;border-radius:8px}.panel-title{font-size:14px;font-weight:650;margin:0}.panel-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #eeeeee}
+    .metric-grid{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:10px;margin-bottom:12px}.metric{padding:13px 14px;min-height:100px}.metric small{color:var(--muted)}.metric strong{display:block;font-size:25px;margin:7px 0 3px;font-weight:600}.trend{font-size:12px;color:var(--green)}
+    .work-grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(310px,.75fr);gap:12px}.stack{display:grid;gap:12px}
+    table{width:100%;border-collapse:collapse}th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;background:#fafafa}th,td{padding:9px 12px;border-bottom:1px solid #ededed}tbody tr:hover{background:#f7fbff}
+    .status{display:inline-flex;align-items:center;gap:6px;font-size:12px}.dot{width:7px;height:7px;border-radius:50%;background:#777}.ok .dot{background:var(--green)}.warn .dot{background:#d17a00}.bad .dot{background:var(--red)}.info .dot{background:var(--blue)}
+    .quick-list{padding:5px 14px 10px}.quick{display:grid;grid-template-columns:1fr auto;gap:5px;padding:10px 0;border-bottom:1px solid #eee}.quick:last-child{border:0}.quick p{margin:0;font-weight:600}.quick small{grid-column:1;color:var(--muted)}
+    .toolbar{display:flex;align-items:center;gap:8px;padding:9px 10px;border-bottom:1px solid var(--line);background:#fafafa}.toolbar input,.toolbar select{height:32px;border:1px solid #bbb;border-radius:5px;background:#fff;padding:0 9px}.toolbar input{min-width:240px;flex:1}
+    .split{display:grid;grid-template-columns:420px minmax(0,1fr);min-height:620px}.list-pane{border-right:1px solid var(--line);overflow:auto}.record{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid #eee;background:#fff;padding:12px 14px}.record:hover,.record.active{background:#f1f1f1}.record strong{display:block;margin-bottom:5px}.record small{color:var(--muted)}.reader{padding:24px 30px;max-width:850px}.reader h2{font-size:24px;margin:6px 0 12px}.reader p{line-height:1.75;color:#424242}.eyebrow{font-size:12px;color:var(--blue);font-weight:650;text-transform:uppercase}
+    .browser-frame{min-height:650px;display:grid;grid-template-rows:auto auto 1fr}.tabbar{display:flex;gap:2px;padding:7px 8px 0;background:#eee}.tab{padding:8px 13px;background:#fff;border-radius:6px 6px 0 0;border:0}.address{display:flex;gap:8px;padding:8px;border-bottom:1px solid var(--line)}.address input{flex:1;height:32px;border:1px solid #bbb;border-radius:6px;padding:0 10px}.webpage{display:grid;grid-template-columns:1fr 300px;background:#fff}.mock-site{padding:35px 7%;background:linear-gradient(180deg,#f0f5f8,#fff 240px)}.mock-site h2{font-size:30px;max-width:700px}.mock-site p{max-width:760px;line-height:1.7}.capture{border-left:1px solid var(--line);padding:16px;background:#fafafa}.field{display:grid;gap:6px;margin-bottom:12px}.field label{font-size:12px;font-weight:600}.field input,.field select,.field textarea{width:100%;border:1px solid #bbb;border-radius:6px;padding:8px;background:#fff}.field textarea{height:90px;resize:vertical}
+    .editor{display:grid;grid-template-columns:220px minmax(540px,1fr) 340px;min-height:690px}.outline,.resource{background:#fafafa;padding:14px}.outline{border-right:1px solid var(--line)}.resource{border-left:1px solid var(--line)}.outline button{display:block;width:100%;border:0;background:transparent;padding:8px;text-align:left;border-radius:5px}.outline button.active{background:#e9e9e9;color:#242424;font-weight:650}.canvas{padding:0 28px 35px;overflow:auto}.editbar{display:flex;gap:5px;position:sticky;top:0;background:#fff;padding:10px 0;border-bottom:1px solid #eee;z-index:1}.editbar button{height:30px;min-width:31px;border:1px solid var(--line);background:#fff;border-radius:5px}.title-input{width:100%;border:0;border-bottom:1px solid #ddd;padding:24px 0 12px;font-size:27px;font-weight:650}.body-edit{min-height:480px;padding:18px 0;outline:0;line-height:1.8;font-size:15px}.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:12px}.tabs button{padding:7px 9px;border:0;background:transparent}.tabs button.active{color:#242424;font-weight:650;border-bottom:2px solid #8a8a8a}.source-card{padding:10px;background:#fff;border:1px solid var(--line);border-radius:6px;margin-bottom:8px}.source-card small{color:var(--muted)}
+    .asset-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;padding:12px}.asset{border:1px solid var(--line);border-radius:7px;overflow:hidden;background:#fff}.thumb{height:132px;padding:14px;display:flex;align-items:flex-end;color:#fff;font-weight:650;background:linear-gradient(135deg,#426b83,#a9c5d6)}.asset:nth-child(2n) .thumb{background:linear-gradient(135deg,#70533e,#dab998)}.asset:nth-child(3n) .thumb{background:linear-gradient(135deg,#2c665b,#92cab6)}.asset-meta{padding:10px}.asset-meta small{color:var(--muted)}
+    .publish{display:grid;grid-template-columns:230px minmax(0,1fr);min-height:650px}.steps{padding:16px;border-right:1px solid var(--line);background:#fafafa}.step{display:flex;gap:10px;padding:10px 4px;color:var(--muted)}.step b{display:grid;place-items:center;width:24px;height:24px;border:1px solid #aaa;border-radius:50%;font-size:12px}.step.done{color:var(--green)}.step.current{color:var(--blue);font-weight:650}.step.current b{background:var(--blue);color:#fff;border-color:var(--blue)}.publish-main{padding:18px}.platforms{display:flex;gap:5px;margin-bottom:14px}.platforms button{height:34px;border:1px solid var(--line);background:#fff;padding:0 14px;border-radius:6px}.platforms button.active{background:var(--blue2);border-color:#8ab7df;color:#095a9f}.approval{border:1px solid #ebc77b;background:#fff8e8;border-radius:7px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;margin:14px 0}.facts{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.fact{padding:12px;background:#fafafa;border:1px solid #e5e5e5;border-radius:6px}.fact small{display:block;color:var(--muted);margin-bottom:4px}
+    .account-layout{display:grid;grid-template-columns:310px 1fr;min-height:600px}.detail{padding:22px}.avatar{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:#dcecf9;color:#0b5a9f;font-weight:700}.profile{display:flex;gap:12px;align-items:center;margin-bottom:20px}
+    .settings{display:grid;grid-template-columns:230px 1fr;min-height:600px}.settings-nav{padding:10px;border-right:1px solid var(--line);background:#fafafa}.settings-nav button{width:100%;height:34px;border:0;background:transparent;text-align:left;border-radius:5px;padding:0 9px}.settings-nav button.active{background:#e5f1fb;color:#0b5a9f}.settings-main{padding:22px;max-width:820px}.setting-row{display:flex;justify-content:space-between;gap:20px;padding:14px 0;border-bottom:1px solid #eee}.setting-row p{margin:3px 0;color:var(--muted);font-size:13px}.storage-bar{height:8px;background:#e7e7e7;border-radius:4px;overflow:hidden;margin:9px 0}.storage-bar i{display:block;width:37%;height:100%;background:var(--blue)}
+    .toast{position:fixed;right:18px;bottom:18px;background:#292929;color:#fff;padding:11px 14px;border-radius:6px;box-shadow:0 6px 20px #0003;display:none}.toast.show{display:block}
+    @media(max-width:1350px){.metric-grid{grid-template-columns:repeat(2,1fr)}.editor{grid-template-columns:190px minmax(500px,1fr)}.resource{display:none}.work-grid{grid-template-columns:1fr}.webpage{grid-template-columns:1fr}.capture{display:none}}
+    @media(prefers-reduced-motion:no-preference){.view.active{animation:enter .14s ease-out}@keyframes enter{from{opacity:.5;transform:translateY(3px)}}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar"><div class="brand">自媒体桌面终端</div><div class="prototype">HTML 重构原型</div><input class="search" aria-label="全局搜索" placeholder="搜索资料、内容、素材和发布包（Ctrl+K）"><button class="top-action" data-toast="同步检查完成：本地文件状态正常">本地状态正常</button><button class="icon-btn" aria-label="通知">3</button></header>
+  <aside class="sidebar"><nav class="nav" aria-label="主要导航">
+    <button class="active" data-view="dashboard"><span class="glyph">⌂</span>工作台</button>
+    <button data-view="browser"><span class="glyph">↗</span>浏览与收集</button>
+    <button data-view="library"><span class="glyph">▤</span>资料库</button>
+    <button data-view="content"><span class="glyph">✎</span>内容</button>
+    <button data-view="assets"><span class="glyph">▧</span>素材库</button>
+    <button data-view="publish"><span class="glyph">⇧</span>发布包</button>
+    <button data-view="accounts"><span class="glyph">◎</span>账号</button>
+    <button data-view="tasks"><span class="glyph">✓</span>任务</button>
+    <button data-view="settings"><span class="glyph">⚙</span>设置</button>
+  </nav></aside>
+  <main>
+    <section class="view active" id="dashboard">
+      <div class="page-head"><div><h1>早上好，今天从这里继续</h1><div class="subtitle">所有数据保存在 J:\自媒体工作区 · 最后检查 2 分钟前</div></div><div class="actions"><button class="secondary" data-view-jump="browser">收集资料</button><button class="primary" data-view-jump="content">新建内容</button></div></div>
+      <div class="metric-grid">
+        <div class="panel metric"><small>待继续内容</small><strong>4</strong><span class="trend">2 篇已具备完整资料</span></div>
+        <div class="panel metric"><small>待人工审批</small><strong>2</strong><span class="status warn"><i class="dot"></i>发布前必须确认</span></div>
+        <div class="panel metric"><small>本周新增资料</small><strong>37</strong><span class="trend">其中 29 条已读回文件</span></div>
+        <div class="panel metric"><small>需要处理</small><strong>3</strong><span class="status bad"><i class="dot"></i>1 个外部文件被修改</span></div>
+      </div>
+      <div class="work-grid"><div class="panel"><div class="panel-head"><h2 class="panel-title">最近工作</h2><button class="top-action" data-view-jump="tasks">查看全部任务</button></div><table><thead><tr><th>工作项</th><th>类型</th><th>状态</th><th>更新时间</th></tr></thead><tbody>
+        <tr><td>英国租房担保人到底看什么</td><td>小红书图文</td><td><span class="status info"><i class="dot"></i>编辑中</span></td><td>09:42</td></tr>
+        <tr><td>银行流水准备清单</td><td>微信公众号</td><td><span class="status warn"><i class="dot"></i>待审批</span></td><td>昨天</td></tr>
+        <tr><td>伦敦通勤费用对比</td><td>资料集合</td><td><span class="status ok"><i class="dot"></i>已收集</span></td><td>昨天</td></tr>
+        <tr><td>签证材料图片组</td><td>素材</td><td><span class="status bad"><i class="dot"></i>文件有变化</span></td><td>2 天前</td></tr>
+      </tbody></table></div>
+      <div class="stack"><div class="panel"><div class="panel-head"><h2 class="panel-title">下一步</h2></div><div class="quick-list">
+        <div class="quick"><p>继续租房担保人笔记</p><button class="secondary" data-view-jump="content">继续</button><small>正文 68% · 已关联 6 条资料</small></div>
+        <div class="quick"><p>审批银行流水发布包</p><button class="secondary" data-view-jump="publish">检查</button><small>3 个平台版本等待确认</small></div>
+        <div class="quick"><p>处理外部文件变化</p><button class="secondary" data-toast="已定位到素材库中的变更文件">定位</button><small>原图未覆盖，可对比后确认</small></div>
+      </div></div></div></div>
+    </section>
+
+    <section class="view" id="browser"><div class="page-head"><div><h1>浏览与收集</h1><div class="subtitle">阅读时直接保存来源、摘录和快照</div></div></div><div class="panel browser-frame">
+      <div class="tabbar"><button class="tab">GOV.UK · Renting</button><button class="tab">＋ 新标签页</button></div>
+      <div class="address"><button class="icon-btn">←</button><button class="icon-btn">→</button><input value="https://www.gov.uk/private-renting"><button class="secondary" data-toast="页面已重新载入">刷新</button></div>
+      <div class="webpage"><article class="mock-site"><div class="eyebrow">GOV.UK · Housing and local services</div><h2>Private renting: Your rights and responsibilities</h2><p>本区域模拟内置浏览器的真实网页阅读空间。正文保持足够宽度，收集操作固定在右侧，避免把浏览、摘录和保存拆成多个页面。</p><h3>Tenancy agreements</h3><p>阅读者可选中段落生成摘录，也可以保存完整网页快照。保存后从同一业务命令读回标题、来源地址、绝对路径、文件大小和内容摘要。</p></article>
+      <aside class="capture"><h2 class="panel-title">保存到资料库</h2><div class="field"><label>标题</label><input value="英国私人租房权利与责任"></div><div class="field"><label>归入主题</label><select><option>英国租房材料</option><option>英国生活成本</option></select></div><div class="field"><label>备注</label><textarea>用于核对租客权利和房东责任。</textarea></div><button class="primary" data-toast="已保存并读回：网页快照 184 KB">保存网页快照</button></aside></div>
+    </div></section>
+
+    <section class="view" id="library"><div class="page-head"><div><h1>资料库</h1><div class="subtitle">共 1,284 条资料 · 12 条需要复核</div></div><button class="primary" data-view-jump="browser">添加资料</button></div><div class="panel"><div class="toolbar"><input placeholder="搜索标题、正文或来源"><select><option>全部来源</option><option>官方</option><option>专业人士</option><option>生活经验</option></select><select><option>最近更新</option><option>最相关</option></select></div><div class="split"><div class="list-pane">
+      <button class="record active" data-reader="英国私人租房权利与责任|GOV.UK · 官方来源|保存于今天 09:36|英国私人租房中，租赁协议、押金保护、维修责任和进入房屋的通知义务都有明确规则。资料已保存网页快照并完成磁盘读回。"><strong>英国私人租房权利与责任</strong><small>GOV.UK · 今天 09:36 · 已验证</small></button>
+      <button class="record" data-reader="租房担保人常见材料清单|Shelter England · 专业来源|保存于昨天 18:20|担保人通常需要提供身份、收入和住址证明。具体要求由中介或房东决定，应在内容中明确区分通用经验与机构要求。"><strong>租房担保人常见材料清单</strong><small>Shelter England · 昨天 · 已验证</small></button>
+      <button class="record" data-reader="伦敦通勤费用记录|个人调研 · 生活经验|保存于 7 月 24 日|包含不同区域月票费用、峰谷时段和实际通勤路线记录。该条资料应与 TfL 官方价格交叉核对后再引用。"><strong>伦敦通勤费用记录</strong><small>个人调研 · 3 天前 · 待复核</small></button>
+    </div><article class="reader"><div class="eyebrow" id="reader-source">GOV.UK · 官方来源</div><h2 id="reader-title">英国私人租房权利与责任</h2><div class="subtitle" id="reader-meta">保存于今天 09:36</div><p id="reader-body">英国私人租房中，租赁协议、押金保护、维修责任和进入房屋的通知义务都有明确规则。资料已保存网页快照并完成磁盘读回。</p><div class="actions"><button class="secondary" data-toast="已显示原始网页快照的本地绝对路径">查看本地文件</button><button class="primary" data-view-jump="content">用于内容</button></div></article></div></div></section>
+
+    <section class="view" id="content"><div class="page-head"><div><h1>内容编辑</h1><div class="subtitle">自动保存于本地 · 09:47 已读回</div></div><div class="actions"><button class="secondary" data-toast="已保存新版本并完成读回">保存版本</button><button class="primary" data-view-jump="publish">准备发布包</button></div></div><div class="panel editor">
+      <aside class="outline"><h2 class="panel-title">文档结构</h2><button class="active">标题</button><button>开场：先讲结论</button><button>担保人看什么</button><button>准备材料</button><button>容易踩的坑</button><button>结尾清单</button></aside>
+      <article class="canvas"><div class="editbar"><button title="加粗"><b>B</b></button><button title="斜体"><i>I</i></button><button title="标题">H</button><button title="项目符号">•</button><button title="插入链接">↗</button></div><input class="title-input" aria-label="标题" value="英国租房担保人到底看什么？一份讲清楚"><div class="body-edit" contenteditable="true" role="textbox" aria-label="正文编辑器"><p>很多人以为找到担保人就结束了，真正让申请卡住的，往往是材料能不能清楚证明三件事：身份、住址和持续收入。</p><h2>担保人通常会被看什么</h2><p>不同房东和中介的要求并不完全一样，但审核通常围绕身份真实性、英国居住情况和收入覆盖能力展开。提交前先向经办方索取完整清单，别只按网上经验准备。</p><h2>先准备这四类材料</h2><ul><li>带照片的身份证明</li><li>近期住址证明</li><li>收入或雇佣证明</li><li>经办方指定的授权文件</li></ul></div></article>
+      <aside class="resource"><div class="tabs"><button class="active">资料 6</button><button>素材 4</button><button>版本 8</button></div><div class="source-card"><b>私人租房权利与责任</b><p><small>GOV.UK · 官方 · 已验证</small></p><button class="secondary" data-toast="摘录已插入光标位置">插入摘录</button></div><div class="source-card"><b>担保人材料清单</b><p><small>Shelter · 专业 · 已验证</small></p><button class="secondary" data-toast="引用已关联到当前段落">关联引用</button></div></aside>
+    </div></section>
+
+    <section class="view" id="assets"><div class="page-head"><div><h1>素材库</h1><div class="subtitle">原图不会被覆盖 · 246 个素材</div></div><div class="actions"><button class="secondary">列表视图</button><button class="primary" data-toast="原型中已打开文件选择入口">导入素材</button></div></div><div class="panel"><div class="toolbar"><input placeholder="搜索素材名称或标签"><select><option>全部类型</option><option>图片</option><option>封面</option></select><select><option>最近使用</option><option>最近导入</option></select></div><div class="asset-grid">
+      <div class="asset"><div class="thumb">伦敦租房街景</div><div class="asset-meta"><b>london-rental-street.jpg</b><p><small>2400 × 1600 · 原图正常</small></p></div></div>
+      <div class="asset"><div class="thumb">材料清单封面</div><div class="asset-meta"><b>guarantor-checklist.png</b><p><small>1080 × 1440 · 已生成版本</small></p></div></div>
+      <div class="asset"><div class="thumb">租赁协议细节</div><div class="asset-meta"><b>tenancy-detail.jpg</b><p><small>3024 × 4032 · 原图正常</small></p></div></div>
+      <div class="asset"><div class="thumb">通勤路线对比</div><div class="asset-meta"><b>commute-map.png</b><p><small>1600 × 1200 · 外部有修改</small></p></div></div>
+    </div></div></section>
+
+    <section class="view" id="publish"><div class="page-head"><div><h1>发布包</h1><div class="subtitle">英国租房担保人到底看什么 · 内容版本 8</div></div><button class="secondary" data-toast="当前正文、图片顺序和账号配置已重新检查">重新检查</button></div><div class="panel publish">
+      <aside class="steps"><div class="step done"><b>✓</b><span>内容与图片</span></div><div class="step done"><b>✓</b><span>平台适配</span></div><div class="step current"><b>3</b><span>人工审批</span></div><div class="step"><b>4</b><span>生成并读回</span></div></aside>
+      <div class="publish-main"><div class="platforms"><button class="active">小红书</button><button>抖音图文</button><button>微信公众号</button></div><h2>审批前确认</h2><p class="subtitle">批准会绑定当前正文摘要、有序图片摘要、账号、平台和模板版本。任何一项变化都会让本次批准失效。</p><div class="facts">
+        <div class="fact"><small>正文</small><b>1,286 字 · 版本 8</b></div><div class="fact"><small>有序图片</small><b>6 张 · 顺序已确认</b></div>
+        <div class="fact"><small>发布账号</small><b>英国生活手册</b></div><div class="fact"><small>平台模板</small><b>小红书图文 v3</b></div>
+      </div><div class="approval"><div><b>等待人工审批</b><div class="subtitle">最后检查：无缺失文件，图片均可读回</div></div><button class="primary" data-toast="已记录本原型的人工审批演示；真实应用必须写入审批证据">批准当前版本</button></div><table><thead><tr><th>产物</th><th>状态</th><th>说明</th></tr></thead><tbody><tr><td>正文.txt</td><td><span class="status ok"><i class="dot"></i>已准备</span></td><td>UTF-8 文本</td></tr><tr><td>图片/01-封面.png</td><td><span class="status ok"><i class="dot"></i>已准备</span></td><td>1080 × 1440</td></tr><tr><td>manifest.json</td><td><span class="status warn"><i class="dot"></i>待批准</span></td><td>审批后生成</td></tr></tbody></table></div>
+    </div></section>
+
+    <section class="view" id="accounts"><div class="page-head"><div><h1>账号</h1><div class="subtitle">平台身份与发布模板配置</div></div><button class="primary" data-toast="已打开新增账号入口">添加账号</button></div><div class="panel account-layout"><div class="list-pane"><button class="record active"><strong>英国生活手册</strong><small>小红书 · 配置完整</small></button><button class="record"><strong>伦敦生活指南</strong><small>微信公众号 · 配置完整</small></button><button class="record"><strong>在英避坑笔记</strong><small>抖音图文 · 缺少默认模板</small></button></div><div class="detail"><div class="profile"><div class="avatar">英</div><div><h2 style="margin:0">英国生活手册</h2><div class="subtitle">小红书 · 启用中</div></div></div><div class="setting-row"><div><b>默认内容模板</b><p>适用于清单和经验说明类图文</p></div><button class="secondary">生活清单 v3</button></div><div class="setting-row"><div><b>默认图片规格</b><p>发布包生成时使用，不修改原图</p></div><button class="secondary">1080 × 1440</button></div><div class="setting-row"><div><b>发布身份检查</b><p>生成发布包前显示账号、平台和模板摘要</p></div><span class="status ok"><i class="dot"></i>正常</span></div></div></div></section>
+
+    <section class="view" id="tasks"><div class="page-head"><div><h1>任务</h1><div class="subtitle">可中断、取消并在重启后继续</div></div></div><div class="panel"><div class="toolbar"><input placeholder="搜索任务"><select><option>全部状态</option><option>运行中</option><option>失败</option><option>已完成</option></select></div><table><thead><tr><th>任务</th><th>进度</th><th>状态</th><th>开始时间</th><th>操作</th></tr></thead><tbody><tr><td>生成小红书图片版本</td><td>4 / 6</td><td><span class="status info"><i class="dot"></i>运行中</span></td><td>09:51</td><td><button class="secondary" data-toast="任务已请求取消，已完成的 4 张图片将保留">取消</button></td></tr><tr><td>导入租房资料包</td><td>18 / 18</td><td><span class="status ok"><i class="dot"></i>已完成</span></td><td>09:18</td><td><button class="secondary">查看</button></td></tr><tr><td>生成微信发布包</td><td>2 / 4</td><td><span class="status bad"><i class="dot"></i>部分成功</span></td><td>昨天</td><td><button class="secondary" data-toast="失败原因：第 3 张源图已被外部移动">查看错误</button></td></tr></tbody></table></div></section>
+
+    <section class="view" id="settings"><div class="page-head"><div><h1>设置</h1><div class="subtitle">应用、存储与 MCP 连接</div></div></div><div class="panel settings"><nav class="settings-nav"><button class="active">存储</button><button>外观与辅助功能</button><button>MCP 连接</button><button>关于</button></nav><div class="settings-main"><h2>业务数据存储</h2><p class="subtitle">已有业务数据后不能通过普通设置切换根目录，避免数据库和磁盘文件失去对应关系。</p><div class="setting-row"><div><b>业务根目录</b><p>J:\自媒体工作区</p></div><button class="secondary" data-toast="已在资源管理器中定位业务根目录">打开目录</button></div><div class="setting-row"><div style="width:100%"><b>当前占用 18.6 GB / 50 GB</b><div class="storage-bar"><i></i></div><p>资料 6.4 GB · 原图 10.8 GB · 历史版本 1.1 GB · 其他 0.3 GB</p></div></div><div class="setting-row"><div><b>文件一致性</b><p>最近扫描 09:45 · 发现 1 个外部修改</p></div><button class="secondary" data-toast="一致性扫描已开始">重新扫描</button></div><div class="setting-row"><div><b>MCP 服务</b><p>与界面共用业务内核 · 本机连接正常</p></div><span class="status ok"><i class="dot"></i>已连接</span></div></div></div></section>
+  </main>
+</div>
+<div class="toast" role="status" aria-live="polite"></div>
+<script>
+  const views=[...document.querySelectorAll(".view")],nav=[...document.querySelectorAll(".nav [data-view]")],toast=document.querySelector(".toast");
+  function show(id){views.forEach(v=>v.classList.toggle("active",v.id===id));nav.forEach(b=>b.classList.toggle("active",b.dataset.view===id));document.querySelector("main").scrollTop=0}
+  nav.forEach(b=>b.addEventListener("click",()=>show(b.dataset.view)));
+  document.querySelectorAll("[data-view-jump]").forEach(b=>b.addEventListener("click",()=>show(b.dataset.viewJump)));
+  document.querySelectorAll("[data-toast]").forEach(b=>b.addEventListener("click",()=>{toast.textContent=b.dataset.toast;toast.classList.add("show");clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>toast.classList.remove("show"),2600)}));
+  document.querySelectorAll("[data-reader]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-reader]").forEach(x=>x.classList.remove("active"));b.classList.add("active");const [title,source,meta,body]=b.dataset.reader.split("|");document.querySelector("#reader-title").textContent=title;document.querySelector("#reader-source").textContent=source;document.querySelector("#reader-meta").textContent=meta;document.querySelector("#reader-body").textContent=body}));
+  document.querySelectorAll(".platforms button").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".platforms button").forEach(x=>x.classList.remove("active"));b.classList.add("active")}));
+  addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();document.querySelector(".search").focus()}});
+</script>
+</body>
+</html>

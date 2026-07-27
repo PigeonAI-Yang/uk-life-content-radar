@@ -1,0 +1,25 @@
+.superpowers/
+node_modules/
+.webpack/
+build/
+out/
+artifacts/
+tmp/
+验收环境/
+
+# Local business data and saved account configuration.
+.content-terminal/
+accounts/
+sources/
+assets/
+packages/
+
+# Local release artifact; publish installers as GitHub Release assets.
+*.exe
+
+# Local secrets and databases.
+.env
+.env.*
+*.db
+*.sqlite
+*.sqlite3

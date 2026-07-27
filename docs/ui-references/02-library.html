@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>资料库 · 自媒体运营终端</title>
+  <style>
+    :root {
+      --bg: #f5f6f8;
+      --panel: #ffffff;
+      --sidebar: #f8f9fb;
+      --line: #e2e5ea;
+      --line-soft: #edf0f3;
+      --text: #202124;
+      --muted: #69717c;
+      --faint: #9097a1;
+      --blue: #0f6cbd;
+      --blue-hover: #115ea3;
+      --blue-soft: #eaf3fc;
+      --green: #0f7b45;
+      --amber: #986800;
+      --radius: 7px;
+      --shadow: 0 10px 30px rgba(30, 45, 65, .08);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      color: var(--text);
+      background: var(--bg);
+      font: 13px/1.45 "Segoe UI", "Microsoft YaHei", sans-serif;
+    }
+
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+
+    .app {
+      height: 100%;
+      display: grid;
+      grid-template-rows: 48px 1fr 24px;
+    }
+
+    .titlebar {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 0 16px;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand {
+      width: 178px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-weight: 650;
+      font-size: 14px;
+    }
+
+    .brand-mark {
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: var(--blue);
+      border-radius: 6px;
+      font-weight: 700;
+    }
+
+    .global-search {
+      width: min(720px, 54vw);
+      height: 32px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 11px;
+      border: 1px solid #cbd1d8;
+      border-radius: var(--radius);
+      background: #fafbfc;
+      color: var(--muted);
+    }
+
+    .global-search:focus-within {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 2px #dcecff;
+      background: #fff;
+    }
+
+    .global-search input {
+      width: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+    }
+
+    .title-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .icon-button {
+      width: 32px;
+      height: 32px;
+      border: 0;
+      border-radius: var(--radius);
+      background: transparent;
+      color: #4d5560;
+    }
+
+    .icon-button:hover { background: #eef1f4; }
+
+    .shell {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 176px minmax(0, 1fr);
+    }
+
+    .sidebar {
+      min-height: 0;
+      padding: 10px 8px;
+      display: flex;
+      flex-direction: column;
+      background: var(--sidebar);
+      border-right: 1px solid var(--line);
+    }
+
+    .nav {
+      display: grid;
+      gap: 3px;
+    }
+
+    .nav button {
+      height: 38px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 11px;
+      border: 0;
+      border-radius: var(--radius);
+      background: transparent;
+      color: #343a42;
+      text-align: left;
+    }
+
+    .nav button:hover { background: #edf0f3; }
+    .nav button.active {
+      color: #075ea8;
+      background: var(--blue-soft);
+      font-weight: 650;
+      box-shadow: inset 3px 0 var(--blue);
+    }
+
+    .nav-icon {
+      width: 18px;
+      text-align: center;
+      font-size: 15px;
+    }
+
+    .nav .count {
+      margin-left: auto;
+      color: var(--faint);
+      font-size: 11px;
+    }
+
+    .sidebar-bottom {
+      margin-top: auto;
+      border-top: 1px solid var(--line);
+      padding-top: 8px;
+    }
+
+    .library {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      background: var(--bg);
+    }
+
+    .page-header {
+      min-height: 56px;
+      padding: 10px 14px 0;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .heading-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .heading-row h1 {
+      margin: 0;
+      font-size: 19px;
+      font-weight: 650;
+      letter-spacing: -.25px;
+    }
+
+    .heading-row p {
+      display: none;
+      color: var(--muted);
+    }
+
+    .header-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      height: 32px;
+      padding: 0 12px;
+      border: 1px solid #c9cfd6;
+      border-radius: var(--radius);
+      color: #2f353c;
+      background: #fff;
+      white-space: nowrap;
+    }
+
+    .btn:hover { background: #f3f5f7; }
+    .btn:active { transform: translateY(1px); }
+    .btn.primary {
+      color: #fff;
+      border-color: var(--blue);
+      background: var(--blue);
+    }
+    .btn.primary:hover { background: var(--blue-hover); }
+
+    .tabs {
+      display: flex;
+      gap: 22px;
+      margin: 0 0 0 22px;
+    }
+
+    .tabs button {
+      height: 38px;
+      padding: 0 2px;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      color: var(--muted);
+      background: transparent;
+    }
+
+    .tabs button.active {
+      color: var(--blue);
+      border-color: var(--blue);
+      font-weight: 650;
+    }
+
+    .filterbar {
+      min-height: 46px;
+      padding: 7px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .library-search {
+      width: min(420px, 32vw);
+      height: 32px;
+      padding: 0 10px;
+      border: 1px solid #c9cfd6;
+      border-radius: var(--radius);
+      outline: 0;
+    }
+
+    .library-search:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 2px #dcecff;
+    }
+
+    .filter {
+      height: 32px;
+      padding: 0 10px;
+      border: 1px solid #c9cfd6;
+      border-radius: var(--radius);
+      color: #3a4149;
+      background: #fff;
+    }
+
+    .view-control {
+      margin-left: auto;
+      display: flex;
+      gap: 7px;
+      align-items: center;
+    }
+
+    .result-area {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: 30px 1fr 36px;
+      padding: 7px 10px 0;
+    }
+
+    .result-summary {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--muted);
+    }
+
+    .result-summary strong {
+      color: var(--text);
+      font-weight: 650;
+    }
+
+    .result-summary .sort {
+      margin-left: auto;
+    }
+
+    .table-wrap {
+      min-height: 0;
+      overflow: auto;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      height: 36px;
+      padding: 0 10px;
+      color: var(--muted);
+      background: #fafbfc;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    td {
+      height: 56px;
+      padding: 5px 10px;
+      border-bottom: 1px solid var(--line-soft);
+      vertical-align: middle;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+    tbody tr { cursor: pointer; }
+    tbody tr:hover td { background: #f8fbfe; }
+    tbody tr.selected td { background: #eef6fd; }
+    tbody tr.selected td:first-child { box-shadow: inset 3px 0 var(--blue); }
+
+    .check-col { width: 36px; }
+    .source-col { width: 160px; }
+    .date-col { width: 104px; }
+    .status-col { width: 88px; }
+
+    .item-title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 650;
+    }
+
+    .item-summary {
+      margin-top: 4px;
+      overflow: hidden;
+      color: var(--muted);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 12px;
+    }
+
+    .item-summary .tag {
+      height: 18px;
+      margin: 0 3px 0 8px;
+      padding: 0 6px;
+      vertical-align: 1px;
+    }
+
+    .usage {
+      margin-left: 7px;
+      color: var(--faint);
+    }
+
+    .source-name { color: #424952; }
+    .source-url {
+      margin-top: 3px;
+      overflow: hidden;
+      color: var(--faint);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 11px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      height: 21px;
+      margin: 2px 3px 2px 0;
+      padding: 0 7px;
+      border-radius: 10px;
+      background: #eef1f4;
+      color: #59616b;
+      font-size: 11px;
+    }
+
+    .tag.blue { color: #075ea8; background: var(--blue-soft); }
+    .tag.green { color: var(--green); background: #e8f5ee; }
+    .tag.amber { color: var(--amber); background: #fff3d6; }
+
+    .pagination {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+    }
+
+    .pagination button {
+      width: 28px;
+      height: 28px;
+      border: 1px solid #cdd2d8;
+      border-radius: 5px;
+      background: #fff;
+    }
+
+    .pagination .page-current {
+      color: #fff;
+      border-color: var(--blue);
+      background: var(--blue);
+    }
+
+    .preview {
+      position: fixed;
+      z-index: 20;
+      top: 48px;
+      right: 0;
+      bottom: 24px;
+      width: min(430px, 42vw);
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      background: #fff;
+      border-left: 1px solid var(--line);
+      box-shadow: -18px 0 44px rgba(30, 45, 65, .14);
+      transform: translateX(102%);
+      transition: transform .2s ease;
+    }
+
+    .preview.open {
+      transform: none;
+    }
+
+    .preview-header {
+      position: relative;
+      padding: 16px 16px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .preview-close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+    }
+
+    .preview-kicker {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .preview h2 {
+      margin: 6px 0 8px;
+      font-size: 19px;
+      line-height: 1.32;
+    }
+
+    .preview-meta {
+      display: flex;
+      gap: 9px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .preview-body {
+      min-height: 0;
+      overflow: auto;
+      padding: 16px;
+    }
+
+    .preview-body p {
+      margin: 0 0 13px;
+      color: #3d444d;
+      font-size: 14px;
+      line-height: 1.76;
+    }
+
+    .article-copy {
+      min-width: 0;
+    }
+
+    .highlight {
+      margin: 14px 0;
+      padding: 11px 12px;
+      border-left: 3px solid var(--blue);
+      background: #f0f7fd;
+      color: #243a4d;
+      line-height: 1.68;
+    }
+
+    .used-by {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    .used-by h3 {
+      margin: 0 0 8px;
+      font-size: 13px;
+    }
+
+    .used-item {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--line-soft);
+    }
+
+    .used-item:last-child { border: 0; }
+
+    .preview-actions {
+      display: flex;
+      gap: 7px;
+      padding: 11px 14px;
+      border-top: 1px solid var(--line);
+      background: #fafbfc;
+    }
+
+    .preview-actions .btn:first-child { margin-right: auto; }
+
+    .statusbar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 10px;
+      color: #646c76;
+      background: #f6f7f8;
+      border-top: 1px solid var(--line);
+      font-size: 11px;
+    }
+
+    .statusbar .right { margin-left: auto; }
+    .online { color: var(--green); }
+
+    .toast {
+      position: fixed;
+      right: 24px;
+      bottom: 40px;
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      color: #fff;
+      background: #242a31;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(8px);
+      transition: .18s ease;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: none;
+    }
+
+    @media (max-width: 1180px) {
+      .shell { grid-template-columns: 160px 1fr; }
+      .source-col { width: 136px; }
+      .global-search { width: 48vw; }
+    }
+
+    @media (min-width: 1500px) {
+      .shell {
+        grid-template-columns: 176px minmax(760px, 52fr) minmax(620px, 48fr);
+      }
+
+      .preview {
+        position: static;
+        width: auto;
+        min-width: 0;
+        transform: none;
+        transition: none;
+        box-shadow: none;
+      }
+
+      .preview-close {
+        display: none;
+      }
+
+      .preview-body {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 280px;
+        gap: 22px;
+        align-content: start;
+      }
+
+      .used-by {
+        margin-top: 0;
+        padding: 0 0 0 18px;
+        border-top: 0;
+        border-left: 1px solid var(--line);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="titlebar">
+      <div class="brand"><span class="brand-mark">内</span>内容终端</div>
+      <label class="global-search">
+        <span>⌕</span>
+        <input placeholder="搜索资料、文案、素材、发布包">
+        <span>Ctrl K</span>
+      </label>
+      <div class="title-actions">
+        <button class="icon-button" title="通知">♢</button>
+        <button class="icon-button" title="帮助">?</button>
+        <button class="icon-button" title="账号">英</button>
+      </div>
+    </header>
+
+    <div class="shell">
+      <aside class="sidebar">
+        <nav class="nav">
+          <button><span class="nav-icon">▦</span>工作台</button>
+          <button><span class="nav-icon">◎</span>浏览与收集</button>
+          <button class="active"><span class="nav-icon">▤</span>资料库 <span class="count">12.8万</span></button>
+          <button><span class="nav-icon">▧</span>内容</button>
+          <button><span class="nav-icon">▧</span>素材库</button>
+          <button><span class="nav-icon">◇</span>发布包</button>
+          <button><span class="nav-icon">♙</span>账号</button>
+          <button><span class="nav-icon">☑</span>任务 <span class="count">3</span></button>
+        </nav>
+        <nav class="nav sidebar-bottom">
+          <button><span class="nav-icon">⚙</span>设置</button>
+        </nav>
+      </aside>
+
+      <main class="library">
+        <section class="page-header">
+          <div class="heading-row">
+            <div>
+              <h1>资料库</h1>
+              <p>集中阅读、整理和复用已收集的资讯与笔记</p>
+            </div>
+            <div class="tabs">
+              <button class="active">全部资料</button>
+              <button>网页</button>
+              <button>摘录</button>
+              <button>笔记</button>
+              <button>文件</button>
+              <button>已归档</button>
+            </div>
+            <div class="header-actions">
+              <button class="btn" data-toast="已打开导入面板">导入文件</button>
+              <button class="btn primary" data-toast="已打开浏览与收集">打开浏览器</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="filterbar">
+          <input id="librarySearch" class="library-search" placeholder="在资料库中搜索标题、正文和来源">
+          <select class="filter"><option>对象类型</option><option>网页</option><option>摘录</option><option>笔记</option></select>
+          <select class="filter"><option>主题</option><option>签证</option><option>租房</option><option>交通</option></select>
+          <select class="filter"><option>来源</option><option>官方</option><option>媒体</option><option>个人</option></select>
+          <select class="filter"><option>时间</option><option>近 7 天</option><option>近 30 天</option><option>近一年</option></select>
+          <button class="filter" data-toast="已打开更多筛选">更多筛选</button>
+          <div class="view-control">
+            <select class="filter">
+              <option>全部资料</option>
+              <option>待核验</option>
+              <option>最近使用</option>
+              <option>高复用价值</option>
+            </select>
+            <button class="btn" data-toast="当前筛选已保存为新视图">保存视图</button>
+          </div>
+        </section>
+
+        <section class="result-area">
+          <div class="result-summary">
+            <strong id="resultCount">128,406 条资料</strong>
+            <span>已显示活跃与归档内容</span>
+            <span class="sort">按最近收集排序 ▾</span>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th class="check-col"><input type="checkbox" aria-label="全选"></th>
+                  <th>标题、摘要与分类</th>
+                  <th class="source-col">来源</th>
+                  <th class="date-col">收集时间</th>
+                  <th class="status-col">状态</th>
+                </tr>
+              </thead>
+              <tbody id="rows">
+                <tr class="selected" data-title="英国租客权利改革：房东不得无理由驱逐" data-source="GOV.UK" data-date="2026-07-24">
+                  <td><input type="checkbox" aria-label="选择资料"></td>
+                  <td>
+                    <div class="item-title">英国租客权利改革：房东不得无理由驱逐</div>
+                    <div class="item-summary">新规调整租约终止、租金上涨和房屋维修责任，对在英租客影响直接。<span class="tag blue">租房</span><span class="tag">政策</span><span class="usage">用于 4 个内容</span></div>
+                  </td>
+                  <td><div class="source-name">GOV.UK</div><div class="source-url">gov.uk/housing</div></td>
+                  <td>今天 10:28</td>
+                  <td><span class="tag green">已核验</span></td>
+                </tr>
+                <tr data-title="国际学生资金证明要求更新" data-source="UKVI" data-date="2026-07-23">
+                  <td><input type="checkbox" aria-label="选择资料"></td>
+                  <td>
+                    <div class="item-title">国际学生资金证明要求更新</div>
+                    <div class="item-summary">学生签证申请所需生活费金额和连续持有期限发生调整。<span class="tag blue">签证</span><span class="tag">学生</span><span class="usage">用于 7 个内容</span></div>
+                  </td>
+                  <td><div class="source-name">UKVI</div><div class="source-url">gov.uk/student-visa</div></td>
+                  <td>昨天 16:42</td>
+                  <td><span class="tag amber">待复核</span></td>
+                </tr>
+                <tr data-title="伦敦交通周末大范围检修安排" data-source="TfL" data-date="2026-07-21">
+                  <td><input type="checkbox" aria-label="选择资料"></td>
+                  <td>
+                    <div class="item-title">伦敦交通周末大范围检修安排</div>
+                    <div class="item-summary">多条地铁和轻轨线路将在周末停运或缩短运行区间。<span class="tag blue">交通</span><span class="tag">伦敦</span><span class="usage">用于 1 个内容</span></div>
+                  </td>
+                  <td><div class="source-name">TfL</div><div class="source-url">tfl.gov.uk/status</div></td>
+                  <td>7 月 21 日</td>
+                  <td><span class="tag green">已核验</span></td>
+                </tr>
+                <tr data-title="英国能源账单价格上限下调 2.3%" data-source="Ofgem" data-date="2026-07-18">
+                  <td><input type="checkbox" aria-label="选择资料"></td>
+                  <td>
+                    <div class="item-title">英国能源账单价格上限下调 2.3%</div>
+                    <div class="item-summary">新的价格上限将影响使用标准浮动费率的家庭用户。<span class="tag blue">账单</span><span class="tag">能源</span><span class="usage">用于 2 个内容</span></div>
+                  </td>
+                  <td><div class="source-name">Ofgem</div><div class="source-url">ofgem.gov.uk</div></td>
+                  <td>7 月 18 日</td>
+                  <td><span class="tag green">已核验</span></td>
+                </tr>
+                <tr data-title="访谈笔记：留学生初次租房材料准备" data-source="个人访谈" data-date="2026-07-15">
+                  <td><input type="checkbox" aria-label="选择资料"></td>
+                  <td>
+                    <div class="item-title">访谈笔记：留学生初次租房材料准备</div>
+                    <div class="item-summary">受访者分享担保人、收入证明和预付租金的真实经历。<span class="tag blue">租房</span><span class="tag">案例</span><span class="usage">尚未使用</span></div>
+                  </td>
+                  <td><div class="source-name">个人访谈</div><div class="source-url">本地笔记</div></td>
+                  <td>7 月 15 日</td>
+                  <td><span class="tag">待整理</span></td>
+                </tr>
+                <tr data-title="银行卡冻结后如何向金融申诉专员投诉" data-source="FOS" data-date="2026-07-09">
+                  <td><input type="checkbox" aria-label="选择资料"></td>
+                  <td>
+                    <div class="item-title">银行卡冻结后如何向金融申诉专员投诉</div>
+                    <div class="item-summary">投诉前置步骤、材料清单和金融机构响应期限说明。<span class="tag blue">银行</span><span class="tag">申诉</span><span class="usage">用于 5 个内容</span></div>
+                  </td>
+                  <td><div class="source-name">FOS</div><div class="source-url">financial-ombudsman.org.uk</div></td>
+                  <td>7 月 9 日</td>
+                  <td><span class="tag green">已核验</span></td>
+                </tr>
+                <tr data-title="英国手机合约年中涨价规则调整" data-source="Ofcom" data-date="2026-07-08">
+                  <td><input type="checkbox" aria-label="选择资料"></td>
+                  <td><div class="item-title">英国手机合约年中涨价规则调整</div><div class="item-summary">运营商需要在签约前明确展示未来价格变化。<span class="tag blue">通信</span><span class="tag">账单</span><span class="usage">用于 3 个内容</span></div></td>
+                  <td><div class="source-name">Ofcom</div><div class="source-url">ofcom.org.uk</div></td>
+                  <td>7 月 8 日</td><td><span class="tag green">已核验</span></td>
+                </tr>
+                <tr data-title="毕业生签证申请时间线与常见错误" data-source="UKCISA" data-date="2026-07-07">
+                  <td><input type="checkbox" aria-label="选择资料"></td>
+                  <td><div class="item-title">毕业生签证申请时间线与常见错误</div><div class="item-summary">课程完成、学校上报和正式申请之间的关键顺序。<span class="tag blue">签证</span><span class="tag">毕业生</span><span class="usage">用于 8 个内容</span></div></td>
+                  <td><div class="source-name">UKCISA</div><div class="source-url">ukcisa.org.uk</div></td>
+                  <td>7 月 7 日</td><td><span class="tag green">已核验</span></td>
+                </tr>
+                <tr data-title="英格兰租房押金争议处理步骤" data-source="Shelter" data-date="2026-07-05">
+                  <td><input type="checkbox" aria-label="选择资料"></td>
+                  <td><div class="item-title">英格兰租房押金争议处理步骤</div><div class="item-summary">退租证据、协商、保护计划申诉与时间限制。<span class="tag blue">租房</span><span class="tag">押金</span><span class="usage">用于 6 个内容</span></div></td>
+                  <td><div class="source-name">Shelter</div><div class="source-url">england.shelter.org.uk</div></td>
+                  <td>7 月 5 日</td><td><span class="tag green">已核验</span></td>
+                </tr>
+                <tr data-title="火车延误退款：不同票种如何申请" data-source="National Rail" data-date="2026-07-04">
+                  <td><input type="checkbox" aria-label="选择资料"></td>
+                  <td><div class="item-title">火车延误退款：不同票种如何申请</div><div class="item-summary">单程票、往返票和季票的退款入口与凭证要求。<span class="tag blue">交通</span><span class="tag">退款</span><span class="usage">用于 4 个内容</span></div></td>
+                  <td><div class="source-name">National Rail</div><div class="source-url">nationalrail.co.uk</div></td>
+                  <td>7 月 4 日</td><td><span class="tag green">已核验</span></td>
+                </tr>
+                <tr data-title="英国工资单上五个容易看错的项目" data-source="HMRC" data-date="2026-07-02">
+                  <td><input type="checkbox" aria-label="选择资料"></td>
+                  <td><div class="item-title">英国工资单上五个容易看错的项目</div><div class="item-summary">税码、养老金、国民保险和累计收入的含义。<span class="tag blue">工作</span><span class="tag">工资单</span><span class="usage">用于 9 个内容</span></div></td>
+                  <td><div class="source-name">HMRC</div><div class="source-url">gov.uk/payslips</div></td>
+                  <td>7 月 2 日</td><td><span class="tag green">已核验</span></td>
+                </tr>
+                <tr data-title="学生地方税豁免需要提交什么材料" data-source="Citizens Advice" data-date="2026-06-30">
+                  <td><input type="checkbox" aria-label="选择资料"></td>
+                  <td><div class="item-title">学生地方税豁免需要提交什么材料</div><div class="item-summary">全日制证明、同住人身份和地方政府申请路径。<span class="tag blue">账单</span><span class="tag">学生</span><span class="usage">用于 5 个内容</span></div></td>
+                  <td><div class="source-name">Citizens Advice</div><div class="source-url">citizensadvice.org.uk</div></td>
+                  <td>6 月 30 日</td><td><span class="tag green">已核验</span></td>
+                </tr>
+                <tr data-title="希思罗机场暑期出行提醒" data-source="Heathrow" data-date="2026-06-28">
+                  <td><input type="checkbox" aria-label="选择资料"></td>
+                  <td><div class="item-title">希思罗机场暑期出行提醒</div><div class="item-summary">值机时间、安检液体规则和交通中断预案。<span class="tag blue">旅行</span><span class="tag">机场</span><span class="usage">尚未使用</span></div></td>
+                  <td><div class="source-name">Heathrow</div><div class="source-url">heathrow.com</div></td>
+                  <td>6 月 28 日</td><td><span class="tag amber">待复核</span></td>
+                </tr>
+                <tr data-title="访谈笔记：毕业后第一份工作的税码问题" data-source="个人访谈" data-date="2026-06-26">
+                  <td><input type="checkbox" aria-label="选择资料"></td>
+                  <td><div class="item-title">访谈笔记：毕业后第一份工作的税码问题</div><div class="item-summary">紧急税码导致到手工资减少的真实处理过程。<span class="tag blue">工作</span><span class="tag">案例</span><span class="usage">尚未使用</span></div></td>
+                  <td><div class="source-name">个人访谈</div><div class="source-url">本地笔记</div></td>
+                  <td>6 月 26 日</td><td><span class="tag">待整理</span></td>
+                </tr>
+                <tr data-title="英国水费困难援助计划查询入口" data-source="Ofwat" data-date="2026-06-24">
+                  <td><input type="checkbox" aria-label="选择资料"></td>
+                  <td><div class="item-title">英国水费困难援助计划查询入口</div><div class="item-summary">不同水务公司的社会费率与申请条件。<span class="tag blue">账单</span><span class="tag">省钱</span><span class="usage">用于 2 个内容</span></div></td>
+                  <td><div class="source-name">Ofwat</div><div class="source-url">ofwat.gov.uk</div></td>
+                  <td>6 月 24 日</td><td><span class="tag green">已核验</span></td>
+                </tr>
+                <tr data-title="伦敦夏季免费博物馆夜场清单" data-source="Londonist" data-date="2026-06-22">
+                  <td><input type="checkbox" aria-label="选择资料"></td>
+                  <td><div class="item-title">伦敦夏季免费博物馆夜场清单</div><div class="item-summary">开放日期、预约方式、交通和年龄限制汇总。<span class="tag blue">活动</span><span class="tag">伦敦</span><span class="usage">用于 3 个内容</span></div></td>
+                  <td><div class="source-name">Londonist</div><div class="source-url">londonist.com</div></td>
+                  <td>6 月 22 日</td><td><span class="tag amber">待复核</span></td>
+                </tr>
+                <tr data-title="租房维修问题如何向地方政府投诉" data-source="Local Council" data-date="2026-06-20">
+                  <td><input type="checkbox" aria-label="选择资料"></td>
+                  <td><div class="item-title">租房维修问题如何向地方政府投诉</div><div class="item-summary">危害等级、证据照片、书面通知和执法部门入口。<span class="tag blue">租房</span><span class="tag">维修</span><span class="usage">用于 4 个内容</span></div></td>
+                  <td><div class="source-name">Local Council</div><div class="source-url">gov.uk/find-local-council</div></td>
+                  <td>6 月 20 日</td><td><span class="tag green">已核验</span></td>
+                </tr>
+                <tr data-title="银行卡转账诈骗后的紧急处理顺序" data-source="FCA" data-date="2026-06-18">
+                  <td><input type="checkbox" aria-label="选择资料"></td>
+                  <td><div class="item-title">银行卡转账诈骗后的紧急处理顺序</div><div class="item-summary">联系银行、报案、保存证据与后续投诉路径。<span class="tag blue">银行</span><span class="tag">诈骗</span><span class="usage">用于 10 个内容</span></div></td>
+                  <td><div class="source-name">FCA</div><div class="source-url">fca.org.uk/scamsmart</div></td>
+                  <td>6 月 18 日</td><td><span class="tag green">已核验</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pagination">
+            <span>每页 50 条</span>
+            <span>第 1–50 条，共 128,406 条</span>
+            <button disabled>‹</button>
+            <button class="page-current">1</button>
+            <button>2</button>
+            <button>3</button>
+            <button>›</button>
+          </div>
+        </section>
+      </main>
+
+      <aside class="preview">
+        <div class="preview-header">
+          <button id="previewClose" class="icon-button preview-close" title="关闭预览">×</button>
+          <div class="preview-kicker">网页资料 · 已核验</div>
+          <h2 id="previewTitle">英国租客权利改革：房东不得无理由驱逐</h2>
+          <div class="preview-meta"><span id="previewSource">GOV.UK</span><span id="previewDate">2026-07-24</span><span>中文摘要</span></div>
+        </div>
+
+        <div class="preview-body">
+          <div class="article-copy">
+            <p>英国租房制度正在发生重要变化。新的改革将取消房东在没有给出法定理由时终止租约的做法，并对租金上涨、房屋维修和租客申诉建立更清晰的规则。</p>
+            <div class="highlight">
+              <strong>已摘录</strong><br>
+              房东需要使用明确的法定理由终止租约，并向租客提供对应证据。租客仍需按合同支付租金并遵守合理义务。
+            </div>
+            <p>对在英中国人来说，最重要的不是记住法案名称，而是知道收到通知后应检查什么、保留哪些文件，以及去哪里核验和申诉。</p>
+            <p>当前资料已经过官方来源核验。专业解释和个人案例仍需与具体事实分开使用。</p>
+          </div>
+
+          <div class="used-by">
+            <h3>已用于 4 个内容</h3>
+            <div class="used-item"><strong>英国租房材料避坑指南</strong><div class="source-url">小红书 · 待审核</div></div>
+            <div class="used-item"><strong>房东通知不是让你立刻搬走</strong><div class="source-url">微信公众号 · 草稿</div></div>
+            <div class="used-item"><strong>租客改革三件要做的事</strong><div class="source-url">抖音图文 · 已导出</div></div>
+          </div>
+        </div>
+
+        <div class="preview-actions">
+          <button class="btn" data-toast="已打开原始网页">查看原文</button>
+          <button class="btn" data-toast="已创建摘录">摘录</button>
+          <button class="btn primary" data-toast="已加入内容项目">加入内容</button>
+        </div>
+      </aside>
+    </div>
+
+    <footer class="statusbar">
+      <span class="online">● 本地资料库可用</span>
+      <span>索引：128,406 条</span>
+      <span>素材根目录：J:\MediaTerminal</span>
+      <span class="right">最近索引：1 分钟前</span>
+    </footer>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const toast = document.getElementById("toast");
+    let toastTimer;
+
+    function showToast(message) {
+      clearTimeout(toastTimer);
+      toast.textContent = message;
+      toast.classList.add("show");
+      toastTimer = setTimeout(() => toast.classList.remove("show"), 1800);
+    }
+
+    document.querySelectorAll("[data-toast]").forEach(button => {
+      button.addEventListener("click", () => showToast(button.dataset.toast));
+    });
+
+    document.querySelectorAll(".tabs button").forEach(button => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll(".tabs button").forEach(item => item.classList.remove("active"));
+        button.classList.add("active");
+      });
+    });
+
+    document.querySelectorAll("#rows tr").forEach(row => {
+      row.addEventListener("click", event => {
+        if (event.target.matches("input")) return;
+        document.querySelectorAll("#rows tr").forEach(item => item.classList.remove("selected"));
+        row.classList.add("selected");
+        document.getElementById("previewTitle").textContent = row.dataset.title;
+        document.getElementById("previewSource").textContent = row.dataset.source;
+        document.getElementById("previewDate").textContent = row.dataset.date;
+        document.querySelector(".preview").classList.add("open");
+      });
+    });
+
+    document.getElementById("previewClose").addEventListener("click", () => {
+      document.querySelector(".preview").classList.remove("open");
+    });
+
+    document.getElementById("librarySearch").addEventListener("input", event => {
+      const query = event.target.value.trim().toLowerCase();
+      let visible = 0;
+      document.querySelectorAll("#rows tr").forEach(row => {
+        const matches = row.textContent.toLowerCase().includes(query);
+        row.style.display = matches ? "" : "none";
+        if (matches) visible += 1;
+      });
+      document.getElementById("resultCount").textContent = query ? `${visible} 条当前结果` : "128,406 条资料";
+    });
+  </script>
+</body>
+</html>
