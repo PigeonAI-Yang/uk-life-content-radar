@@ -38,6 +38,7 @@ $requiredFiles = @(
     'docs/development-workflow.md',
     'docs/verification.md',
     'docs/spark/2026-07-26-ai-media-desktop-terminal-prd.md',
+    'docs/spark/2026-07-28-content-business-partner-system-design.md',
     'docs/spec.md',
     'docs/ui-visual-spec.md',
     'docs/plan.md',
@@ -79,7 +80,8 @@ Assert-Contains -RelativePath 'docs/ui-visual-spec.md' -Pattern '^## 3\. 窗口�
 Assert-Contains -RelativePath 'docs/ui-visual-spec.md' -Pattern '^## 11\. 视觉验收\s*$' -Description '视觉验收'
 Assert-Contains -RelativePath 'docs/ui-visual-spec.md' -Pattern '^### 7\.2 浏览与收集\s*$' -Description '浏览收集页面规范'
 Assert-Contains -RelativePath 'docs/ui-visual-spec.md' -Pattern '^### 7\.7 账号\s*$' -Description '账号页面规范'
-Assert-Contains -RelativePath 'docs/ui-visual-spec.md' -Pattern '^### 7\.8 设置\s*$' -Description '设置页面规范'
+Assert-Contains -RelativePath 'docs/ui-visual-spec.md' -Pattern '^### 7\.8 经营\s*$' -Description '经营页面规范'
+Assert-Contains -RelativePath 'docs/ui-visual-spec.md' -Pattern '^### 7\.9 设置\s*$' -Description '设置页面规范'
 Assert-Contains -RelativePath 'docs/plan.md' -Pattern '^## 3\. 阶段 1：单平台最小发布闭环\s*$' -Description '最小发布闭环计划'
 Assert-Contains -RelativePath 'docs/plan.md' -Pattern '^## 9\. 阶段 7：完整桌面交付\s*$' -Description '安装应用交付计划'
 Assert-Contains -RelativePath 'docs/plan.md' -Pattern '最小持久任务执行、状态转换、取消提交点' -Description '持久任务前置'
@@ -91,6 +93,10 @@ Assert-Contains -RelativePath 'docs/tasks.md' -Pattern '^### TASK-000 工程壳�
 Assert-Contains -RelativePath 'docs/tasks.md' -Pattern '^### TASK-019 第一版最终验收与发布裁决\s*$' -Description '最终验收任务'
 Assert-Contains -RelativePath 'docs/tasks.md' -Pattern '直接依赖 TASK-000 至 TASK-018 与 UIR-001 至 UIR-004 全部为 completed（已完成）' -Description '最终任务完整依赖'
 Assert-Contains -RelativePath 'docs/tasks.md' -Pattern 'TASK-019 本身不得吸收实现工作' -Description '最终任务不补功能'
+Assert-Contains -RelativePath 'docs/tasks.md' -Pattern '^### BIZ-001 内容事业合伙人产品契约、数据对象与迁移\s*$' -Description '内容生意工作台首任务'
+Assert-Contains -RelativePath 'docs/tasks.md' -Pattern '^### BIZ-008 真实帖子至成交样例与完整验收\s*$' -Description '内容生意工作台最终验收'
+Assert-Contains -RelativePath 'docs/spec.md' -Pattern '^## 15\. 内容事业合伙人扩展\s*$' -Description '内容事业合伙人技术契约'
+Assert-Contains -RelativePath 'src/storage/migrations.ts' -Pattern 'version:\s*14' -Description '内容生意数据库迁移'
 
 function Invoke-NpmGate {
     param([Parameter(Mandatory)][string]$Script)

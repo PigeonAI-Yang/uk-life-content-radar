@@ -11,6 +11,19 @@ export type RootSettings = {
   fts5: boolean;
 };
 
+export const rootBusinessDirectories = [
+  'sources',
+  'assets/original',
+  'assets/derived',
+  'packages',
+  'business/products',
+  'business/strategies',
+  'customers',
+  'conversations',
+  'intelligence',
+  '.content-terminal/tmp'
+] as const;
+
 export class AppDatabase {
   private connection?: Database.Database;
 
@@ -24,7 +37,7 @@ export class AppDatabase {
     fs.mkdirSync(absoluteRoot, { recursive: true });
     fs.writeFileSync(probePath, 'ok', { flag: 'wx' });
     fs.rmSync(probePath);
-    for (const directory of ['sources', 'assets/original', 'assets/derived', 'packages', '.content-terminal/tmp']) {
+    for (const directory of rootBusinessDirectories) {
       fs.mkdirSync(path.join(absoluteRoot, directory), { recursive: true });
     }
 

@@ -333,5 +333,181 @@ export const migrations = [
       );
       CREATE INDEX semantic_vectors_model_type ON semantic_vectors(model_id, object_type, object_id);
     `
+  },
+  {
+    version: 14,
+    sql: `
+      CREATE TABLE products (
+        id TEXT PRIMARY KEY,
+        account_id TEXT NOT NULL REFERENCES accounts(id),
+        name TEXT NOT NULL,
+        target_customer TEXT NOT NULL,
+        problem TEXT NOT NULL,
+        price_range TEXT NOT NULL,
+        service_scope TEXT NOT NULL,
+        suitable_for TEXT NOT NULL,
+        unsuitable_for TEXT NOT NULL,
+        version INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX products_account_updated ON products(account_id, updated_at DESC, id);
+
+      CREATE TABLE product_versions (
+        id TEXT PRIMARY KEY,
+        product_id TEXT NOT NULL REFERENCES products(id),
+        version INTEGER NOT NULL,
+        snapshot_json TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        byte_size INTEGER NOT NULL,
+        sha256 TEXT NOT NULL,
+        file_mtime TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        UNIQUE(product_id, version)
+      );
+
+      CREATE TABLE strategy_proposals (
+        id TEXT PRIMARY KEY,
+        account_id TEXT NOT NULL REFERENCES accounts(id),
+        product_id TEXT REFERENCES products(id),
+        proposal_type TEXT NOT NULL,
+        proposed_json TEXT NOT NULL,
+        rationale TEXT NOT NULL,
+        evidence_json TEXT NOT NULL,
+        success_measure TEXT NOT NULL,
+        status TEXT NOT NULL,
+        version INTEGER NOT NULL,
+        approved_strategy_id TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX strategy_proposals_status_updated
+        ON strategy_proposals(status, updated_at DESC, id);
+
+      CREATE TABLE strategy_versions (
+        id TEXT PRIMARY KEY,
+        account_id TEXT NOT NULL REFERENCES accounts(id),
+        product_id TEXT REFERENCES products(id),
+        proposal_id TEXT NOT NULL UNIQUE REFERENCES strategy_proposals(id),
+        version INTEGER NOT NULL,
+        strategy_json TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        byte_size INTEGER NOT NULL,
+        sha256 TEXT NOT NULL,
+        file_mtime TEXT NOT NULL,
+        status TEXT NOT NULL,
+        approved_at TEXT NOT NULL,
+        invalidated_at TEXT,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX strategy_versions_account_status
+        ON strategy_versions(account_id, status, version DESC, id);
+
+      CREATE TABLE leads (
+        id TEXT PRIMARY KEY,
+        account_id TEXT NOT NULL REFERENCES accounts(id),
+        product_id TEXT REFERENCES products(id),
+        source_content_id TEXT REFERENCES content_projects(id),
+        platform TEXT NOT NULL,
+        nickname TEXT NOT NULL,
+        first_contact_at TEXT NOT NULL,
+        stage TEXT NOT NULL CHECK(stage IN (
+          'new_message', 'need_understood', 'wechat_added', 'negotiating', 'won', 'lost'
+        )),
+        core_need TEXT NOT NULL,
+        intent TEXT NOT NULL,
+        wechat_added INTEGER NOT NULL CHECK(wechat_added IN (0, 1)),
+        next_action TEXT NOT NULL,
+        next_follow_up_at TEXT,
+        version INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX leads_stage_follow_up
+        ON leads(stage, next_follow_up_at, updated_at DESC, id);
+      CREATE INDEX leads_content_updated
+        ON leads(source_content_id, updated_at DESC, id);
+
+      CREATE TABLE conversation_records (
+        id TEXT PRIMARY KEY,
+        lead_id TEXT REFERENCES leads(id),
+        channel TEXT NOT NULL CHECK(channel IN ('xiaohongshu', 'wechat', 'spoken', 'other')),
+        occurred_at TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        needs_json TEXT NOT NULL,
+        objections_json TEXT NOT NULL,
+        suggested_reply TEXT NOT NULL,
+        conclusion TEXT NOT NULL,
+        next_follow_up_at TEXT,
+        confirmation_status TEXT NOT NULL CHECK(confirmation_status IN ('pending', 'confirmed')),
+        file_path TEXT NOT NULL,
+        byte_size INTEGER NOT NULL,
+        sha256 TEXT NOT NULL,
+        file_mtime TEXT NOT NULL,
+        status TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX conversation_records_lead_occurred
+        ON conversation_records(lead_id, occurred_at DESC, id);
+
+      CREATE TABLE deals (
+        id TEXT PRIMARY KEY,
+        lead_id TEXT NOT NULL REFERENCES leads(id),
+        product_id TEXT NOT NULL REFERENCES products(id),
+        outcome TEXT NOT NULL CHECK(outcome IN ('won', 'lost')),
+        amount_minor INTEGER,
+        currency TEXT NOT NULL,
+        decided_at TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        content_insight TEXT NOT NULL,
+        version INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX deals_decided ON deals(decided_at DESC, id);
+
+      CREATE TABLE post_metrics (
+        id TEXT PRIMARY KEY,
+        content_id TEXT NOT NULL REFERENCES content_projects(id),
+        platform TEXT NOT NULL,
+        observed_at TEXT NOT NULL,
+        source_type TEXT NOT NULL CHECK(source_type IN ('manual', 'screenshot', 'import')),
+        impressions INTEGER,
+        views INTEGER,
+        likes INTEGER,
+        saves INTEGER,
+        comments INTEGER,
+        messages INTEGER,
+        evidence_file_path TEXT,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX post_metrics_content_observed
+        ON post_metrics(content_id, observed_at DESC, id);
+
+      CREATE TABLE intelligence_candidates (
+        id TEXT PRIMARY KEY,
+        source_id TEXT REFERENCES sources(id),
+        scan_task_id TEXT REFERENCES tasks(id),
+        title TEXT NOT NULL,
+        source_url TEXT NOT NULL,
+        audience TEXT NOT NULL,
+        impact TEXT NOT NULL,
+        timeliness TEXT NOT NULL,
+        verification_status TEXT NOT NULL,
+        duplicate_of_id TEXT REFERENCES intelligence_candidates(id),
+        angles_json TEXT NOT NULL,
+        publish_before TEXT,
+        status TEXT NOT NULL,
+        discovered_at TEXT NOT NULL,
+        last_checked_at TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX intelligence_candidates_status_deadline
+        ON intelligence_candidates(status, publish_before, updated_at DESC, id);
+    `
   }
 ] as const;

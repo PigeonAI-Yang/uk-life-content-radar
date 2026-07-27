@@ -229,3 +229,68 @@ src/
 2. Sharp（图片处理库）的中文字体行为与 Windows（微软桌面系统）原生依赖打包结果。
 3. 小红书、抖音、微信公众号当前图文尺寸、字数与预览模板来源。
 4. 微信公众号长文预览采用的最低可复制格式。
+
+## 15. 内容事业合伙人扩展
+
+### 15.1 单体边界
+
+内容生意工作台继续复用现有 Electron（桌面应用框架）单体、唯一业务分发器、唯一 better-sqlite3（同步数据库驱动）连接、用户业务根目录和 Windows Named Pipe（微软系统命名管道）。不增加 CRM（客户关系管理系统）服务、OCR（光学字符识别）服务、HTTP（超文本传输协议）服务或新状态管理库。
+
+截图理解由外部 Codex（代码智能体）完成；应用只负责接收原始文件路径、经过 Zod（结构校验库）验证的提取结果、用户确认状态和对象关系。
+
+### 15.2 SQLite 对象
+
+手写迁移建立：
+
+- `products`、`product_versions`：产品当前状态和不可覆盖版本文件；
+- `strategy_proposals`、`strategy_versions`：策略提案与经人类批准的正式版本；
+- `leads`：客户来源、阶段、需求、意向和下一步；
+- `conversation_records`：私信、微信、口述材料原件与提取结果；
+- `deals`：成交金额或未成交原因及内容洞察；
+- `post_metrics`：带观察时间和来源类型的平台表现；
+- `intelligence_candidates`：定时扫描候选、核验、时效、重复关系和失败来源。
+
+客户阶段只使用 `new_message`、`need_understood`、`wechat_added`、`negotiating`、`won`、`lost`。沟通原件无法确认客户时允许 `lead_id` 为空并标记 `pending`，不得猜测合并。
+
+### 15.3 业务文件
+
+业务根目录增加：
+
+```text
+business/products/<product-id>/<version>.json
+business/strategies/<account-id>/<version>.json
+customers/<lead-id>/summary.json
+conversations/<conversation-id>/<original-file>
+intelligence/<candidate-id>/candidate.json
+```
+
+文件型对象读回绝对路径、大小、修改时间、保存摘要、实际摘要和 `present | missing | modified`。原始截图、聊天文本、产品版本和策略版本不覆盖。
+
+### 15.4 统一命令
+
+首批命令：
+
+- `product.create|get|update|list`
+- `strategy.propose|get|list|approve`
+- `lead.create|get|update|list`
+- `conversation.import|get|confirm|list`
+- `deal.record|get|list`
+- `post_metrics.record|list`
+- `business.snapshot`
+- `intelligence.create_candidate|get|list`
+
+创建、导入和记录命令接受调用方与幂等键；更新命令使用期望版本。`strategy.approve` 与 `approval.approve` 一样只允许人类界面调用，MCP（模型上下文协议）注册时排除。
+
+### 15.5 经营快照
+
+`business.snapshot` 是跨会话恢复查询，返回：
+
+- 当前产品和经批准策略；
+- 最近内容与资讯候选；
+- 各阶段客户数量和需要跟进的客户；
+- 最近成交与未成交原因；
+- 待确认沟通材料；
+- 待批准策略提案和发布包；
+- 最后成功扫描时间、失败来源和明确数据缺口。
+
+快照只汇总真实对象，不让模型生成的文字代替数据库事实。
