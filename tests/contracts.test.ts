@@ -4,7 +4,7 @@ import { errorCodes } from '../src/contracts/errors';
 
 describe('统一业务契约', () => {
   it('登记统一业务命令与查询', () => {
-    expect(Object.keys(commandSchemas)).toHaveLength(85);
+    expect(Object.keys(commandSchemas)).toHaveLength(96);
     expect(commandSchemas).toHaveProperty('account.create');
     expect(commandSchemas).toHaveProperty('collect.webpage');
     expect(commandSchemas).toHaveProperty('resource.search');

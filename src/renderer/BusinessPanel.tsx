@@ -12,12 +12,17 @@ type Proposal = {
   id: string; productId: string | null; rationale: string; successMeasure: string;
   status: string; version: number; approvedStrategy: { versionFile: FileReadback } | null;
 };
+type Lead = {
+  id: string; nickname: string; platform: string; stage: string; coreNeed: string;
+  nextAction: string; version: number; conversations: { id: string; summary: string; confirmationStatus: string }[];
+};
 
 export function BusinessPanel() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountId, setAccountId] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [message, setMessage] = useState('');
   const [product, setProduct] = useState({
     name: '', targetCustomer: '', problem: '', priceRange: '', serviceScope: '',
@@ -25,15 +30,19 @@ export function BusinessPanel() {
   });
   const [rationale, setRationale] = useState('');
   const [successMeasure, setSuccessMeasure] = useState('');
+  const [lead, setLead] = useState({ nickname: '', coreNeed: '', intent: '', nextAction: '' });
+  const [conversation, setConversation] = useState({ leadId: '', text: '', summary: '' });
 
   const load = async (selected: string) => {
     if (!selected) return;
-    const [productResult, strategyResult] = await Promise.all([
+    const [productResult, strategyResult, leadResult] = await Promise.all([
       window.terminal.business.dispatch('product.list', { accountId: selected }),
-      window.terminal.business.dispatch('strategy.list', { accountId: selected })
+      window.terminal.business.dispatch('strategy.list', { accountId: selected }),
+      window.terminal.business.dispatch('lead.list', { accountId: selected })
     ]);
     if (productResult.ok) setProducts((productResult.result as { items: Product[] }).items);
     if (strategyResult.ok) setProposals((strategyResult.result as { items: Proposal[] }).items);
+    if (leadResult.ok) setLeads((leadResult.result as { items: Lead[] }).items);
   };
 
   useEffect(() => {
@@ -76,6 +85,44 @@ export function BusinessPanel() {
     });
     if (!result.ok) return setMessage(`${result.error.code}: ${result.error.message}`);
     setMessage('经营策略已由你批准并保存为正式版本。');
+    await load(accountId);
+  };
+
+  const createLead = async () => {
+    const result = await window.terminal.business.dispatch('lead.create', {
+      caller: 'ui', idempotencyKey: crypto.randomUUID(), accountId,
+      productId: products[0]?.id, platform: 'xiaohongshu', ...lead
+    });
+    if (!result.ok) return setMessage(`${result.error.code}: ${result.error.message}`);
+    setLead({ nickname: '', coreNeed: '', intent: '', nextAction: '' });
+    setMessage('客户线索已记录，并保留来源产品关系。');
+    await load(accountId);
+  };
+
+  const advanceLead = async (item: Lead) => {
+    const stages: Record<string, string> = {
+      new_message: 'need_understood', need_understood: 'wechat_added',
+      wechat_added: 'negotiating', negotiating: 'won'
+    };
+    const next = stages[item.stage];
+    if (!next) return;
+    const result = await window.terminal.business.dispatch('lead.update', {
+      id: item.id, expectedVersion: item.version, stage: next, wechatAdded: next === 'wechat_added'
+    });
+    if (!result.ok) return setMessage(`${result.error.code}: ${result.error.message}`);
+    await load(accountId);
+  };
+
+  const importConversation = async () => {
+    const result = await window.terminal.business.dispatch('conversation.import', {
+      caller: 'ui', idempotencyKey: crypto.randomUUID(), leadId: conversation.leadId || undefined,
+      channel: 'xiaohongshu', occurredAt: new Date().toISOString(),
+      text: conversation.text, summary: conversation.summary, needs: [], objections: [],
+      suggestedReply: '', conclusion: ''
+    });
+    if (!result.ok) return setMessage(`${result.error.code}: ${result.error.message}`);
+    setConversation({ leadId: '', text: '', summary: '' });
+    setMessage(conversation.leadId ? '沟通原文已保存，等待你确认提取结果。' : '身份未确认，材料已单独进入待确认，不会自动合并客户。');
     await load(accountId);
   };
 
@@ -125,6 +172,31 @@ export function BusinessPanel() {
           <p>{item.rationale}</p><span>验证：{item.successMeasure}</span>
           {item.status === 'pending' && <Button appearance="primary" onClick={() => approve(item)}>批准为正式策略</Button>}
           {item.approvedStrategy && <small>{item.approvedStrategy.versionFile.fileStatus} · {item.approvedStrategy.versionFile.filePath}</small>}
+        </article>)}
+      </section>
+      <section>
+        <h2>客户与成交</h2>
+        <div className="business-form">
+          <Input aria-label="客户昵称" placeholder="私信客户昵称" value={lead.nickname} onChange={(_, data) => setLead((value) => ({ ...value, nickname: data.value }))} />
+          <Input aria-label="客户需求" placeholder="核心需求" value={lead.coreNeed} onChange={(_, data) => setLead((value) => ({ ...value, coreNeed: data.value }))} />
+          <Input aria-label="客户意向" placeholder="意向与预算" value={lead.intent} onChange={(_, data) => setLead((value) => ({ ...value, intent: data.value }))} />
+          <Input aria-label="下一步动作" placeholder="下一步跟进" value={lead.nextAction} onChange={(_, data) => setLead((value) => ({ ...value, nextAction: data.value }))} />
+          <Button disabled={!accountId || !lead.nickname} onClick={createLead}>记录新私信客户</Button>
+        </div>
+        <div className="business-form">
+          <Select aria-label="沟通所属客户" value={conversation.leadId} onChange={(event) => setConversation((value) => ({ ...value, leadId: event.target.value }))}>
+            <option value="">身份未确认，暂不关联</option>
+            {leads.map((item) => <option key={item.id} value={item.id}>{item.nickname}</option>)}
+          </Select>
+          <Textarea aria-label="沟通原文" placeholder="粘贴私信、微信对话或口述记录" value={conversation.text} onChange={(_, data) => setConversation((value) => ({ ...value, text: data.value }))} />
+          <Input aria-label="沟通摘要" placeholder="这次沟通说了什么" value={conversation.summary} onChange={(_, data) => setConversation((value) => ({ ...value, summary: data.value }))} />
+          <Button disabled={!conversation.text || !conversation.summary} onClick={importConversation}>保存沟通原件</Button>
+        </div>
+        {leads.map((item) => <article className="business-card" key={item.id}>
+          <strong>{item.nickname}</strong><span>{item.stage} · {item.platform}</span>
+          <p>{item.coreNeed || '需求待了解'}；下一步：{item.nextAction || '待安排'}</p>
+          {!['won', 'lost'].includes(item.stage) && <Button onClick={() => advanceLead(item)}>推进到下一阶段</Button>}
+          <small>{item.conversations.length} 条沟通记录</small>
         </article>)}
       </section>
     </div>

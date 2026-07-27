@@ -104,6 +104,73 @@ export const commandSchemas = {
     status: z.enum(['pending', 'approved', 'rejected', 'invalidated']).optional()
   }).strict(),
   'strategy.approve': versioned,
+  'lead.create': z.object({
+    ...idempotent,
+    accountId: z.string().min(1),
+    productId: z.string().min(1).optional(),
+    sourceContentId: z.string().min(1).optional(),
+    platform: z.enum(['xiaohongshu', 'douyin', 'wechat', 'other']),
+    nickname: z.string().min(1),
+    coreNeed: z.string().default(''),
+    intent: z.string().default(''),
+    nextAction: z.string().default(''),
+    nextFollowUpAt: z.string().datetime().optional()
+  }).strict(),
+  'lead.get': id,
+  'lead.list': accountId.extend({ stage: z.enum([
+    'new_message', 'need_understood', 'wechat_added', 'negotiating', 'won', 'lost'
+  ]).optional() }).strict(),
+  'lead.update': versioned.extend({
+    stage: z.enum(['new_message', 'need_understood', 'wechat_added', 'negotiating', 'won', 'lost']).optional(),
+    coreNeed: z.string().optional(),
+    intent: z.string().optional(),
+    wechatAdded: z.boolean().optional(),
+    nextAction: z.string().optional(),
+    nextFollowUpAt: z.string().datetime().nullable().optional()
+  }).strict(),
+  'conversation.import': z.object({
+    ...idempotent,
+    leadId: z.string().min(1).optional(),
+    channel: z.enum(['xiaohongshu', 'wechat', 'spoken', 'other']),
+    occurredAt: z.string().datetime(),
+    filePath: z.string().min(1).optional(),
+    text: z.string().min(1).optional(),
+    summary: z.string().min(1),
+    needs: z.array(z.string()).default([]),
+    objections: z.array(z.string()).default([]),
+    suggestedReply: z.string().default(''),
+    conclusion: z.string().default(''),
+    nextFollowUpAt: z.string().datetime().optional()
+  }).strict().refine((value) => Boolean(value.filePath) !== Boolean(value.text), '必须且只能提供 filePath 或 text'),
+  'conversation.confirm': versioned,
+  'conversation.list': z.object({ leadId: z.string().min(1).optional() }).strict(),
+  'deal.record': z.object({
+    ...idempotent,
+    leadId: z.string().min(1),
+    productId: z.string().min(1),
+    outcome: z.enum(['won', 'lost']),
+    amountMinor: z.number().int().min(0).optional(),
+    currency: z.string().length(3).default('GBP'),
+    decidedAt: z.string().datetime(),
+    reason: z.string().min(1),
+    contentInsight: z.string().default('')
+  }).strict(),
+  'deal.list': accountId,
+  'post_metrics.record': z.object({
+    ...idempotent,
+    contentId: z.string().min(1),
+    platform: z.enum(['xiaohongshu', 'douyin', 'wechat']),
+    observedAt: z.string().datetime(),
+    sourceType: z.enum(['manual', 'screenshot', 'import']),
+    impressions: z.number().int().min(0).optional(),
+    views: z.number().int().min(0).optional(),
+    likes: z.number().int().min(0).optional(),
+    saves: z.number().int().min(0).optional(),
+    comments: z.number().int().min(0).optional(),
+    messages: z.number().int().min(0).optional(),
+    evidenceFilePath: z.string().min(1).optional()
+  }).strict(),
+  'post_metrics.list': contentId,
   'browser.tabs.list': z.object({}).strict(),
   'collect.webpage': z.object({ ...idempotent, tabId: z.string().min(1), destination: z.enum(['library', 'content']) }).strict(),
   'collect.selection': z.object({ ...idempotent, tabId: z.string().min(1), destination: z.enum(['library', 'content']) }).strict(),

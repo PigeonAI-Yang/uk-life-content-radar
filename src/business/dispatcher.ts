@@ -15,6 +15,7 @@ import { LibraryService } from './library-service';
 import { SearchService } from './search-service';
 import { AssetService } from './asset-service';
 import { BusinessManagementService } from './business-management-service';
+import { CustomerService } from './customer-service';
 
 type Account = {
   id: string;
@@ -61,6 +62,7 @@ export class CommandDispatcher {
   private readonly search: SearchService;
   private readonly assets: AssetService;
   private readonly management: BusinessManagementService;
+  private readonly customers: CustomerService;
 
   constructor(private readonly database: Database.Database, private readonly rootPath: string, browser: BrowserManager) {
     this.tasks = new TaskService(database, rootPath);
@@ -71,6 +73,7 @@ export class CommandDispatcher {
     this.search = new SearchService(database);
     this.assets = new AssetService(database, rootPath);
     this.management = new BusinessManagementService(database, rootPath);
+    this.customers = new CustomerService(database, rootPath);
   }
 
   async dispatch(name: string, input: unknown): Promise<DispatchResult> {
@@ -119,6 +122,31 @@ export class CommandDispatcher {
     if (command === 'strategy.approve') {
       return this.management.approveStrategy(String(input.id), Number(input.expectedVersion));
     }
+    if (command === 'lead.create') {
+      return this.runIdempotent(command, input, () => this.customers.createLead(input));
+    }
+    if (command === 'lead.get') return this.customers.getLead(String(input.id));
+    if (command === 'lead.list') {
+      return this.customers.listLeads(String(input.accountId), input.stage ? String(input.stage) : undefined);
+    }
+    if (command === 'lead.update') return this.customers.updateLead(input);
+    if (command === 'conversation.import') {
+      return this.runIdempotent(command, input, () => this.customers.importConversation(input));
+    }
+    if (command === 'conversation.confirm') {
+      return this.customers.confirmConversation(String(input.id), Number(input.expectedVersion));
+    }
+    if (command === 'conversation.list') {
+      return this.customers.listConversations(input.leadId ? String(input.leadId) : undefined);
+    }
+    if (command === 'deal.record') {
+      return this.runIdempotent(command, input, () => this.customers.recordDeal(input));
+    }
+    if (command === 'deal.list') return this.customers.listDeals(String(input.accountId));
+    if (command === 'post_metrics.record') {
+      return this.runIdempotent(command, input, () => this.customers.recordMetrics(input));
+    }
+    if (command === 'post_metrics.list') return this.customers.listMetrics(String(input.contentId));
     if (command === 'task.start') return this.tasks.start(input);
     if (command === 'task.get') return this.tasks.get(String(input.taskId));
     if (command === 'task.list') return this.tasks.list(String(input.query), Number(input.limit));
