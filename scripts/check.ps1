@@ -91,12 +91,16 @@ Assert-Contains -RelativePath 'docs/plan.md' -Pattern '逐行执行 UI（用户�
 Assert-Contains -RelativePath 'docs/tasks.md' -Pattern '^## 2\. 主台账\s*$' -Description '任务主台账'
 Assert-Contains -RelativePath 'docs/tasks.md' -Pattern '^### TASK-000 工程壳、依赖锁定与总门禁\s*$' -Description '首个工程任务'
 Assert-Contains -RelativePath 'docs/tasks.md' -Pattern '^### TASK-019 第一版最终验收与发布裁决\s*$' -Description '最终验收任务'
-Assert-Contains -RelativePath 'docs/tasks.md' -Pattern '直接依赖 TASK-000 至 TASK-018 与 UIR-001 至 UIR-004 全部为 completed（已完成）' -Description '最终任务完整依赖'
+Assert-Contains -RelativePath 'docs/tasks.md' -Pattern '直接依赖 TASK-000 至 TASK-018、UIR-001 至 UIR-004、BIZ-001 至 BIZ-008 与 PI-001 至 PI-004 全部为 completed（已完成）' -Description '最终任务完整依赖'
 Assert-Contains -RelativePath 'docs/tasks.md' -Pattern 'TASK-019 本身不得吸收实现工作' -Description '最终任务不补功能'
 Assert-Contains -RelativePath 'docs/tasks.md' -Pattern '^### BIZ-001 内容事业合伙人产品契约、数据对象与迁移\s*$' -Description '内容生意工作台首任务'
 Assert-Contains -RelativePath 'docs/tasks.md' -Pattern '^### BIZ-008 真实帖子至成交样例与完整验收\s*$' -Description '内容生意工作台最终验收'
 Assert-Contains -RelativePath 'docs/spec.md' -Pattern '^## 15\. 内容事业合伙人扩展\s*$' -Description '内容事业合伙人技术契约'
 Assert-Contains -RelativePath 'src/storage/migrations.ts' -Pattern 'version:\s*14' -Description '内容生意数据库迁移'
+Assert-Contains -RelativePath 'docs/spec.md' -Pattern '^## 16\. Pi Agent 执行内核\s*$' -Description 'Pi Agent 技术契约'
+Assert-Contains -RelativePath 'docs/tasks.md' -Pattern '^### PI-001 Pi 产品契约、依赖、认证探测与失败实验\s*$' -Description 'Pi Agent 首任务'
+Assert-Contains -RelativePath 'docs/tasks.md' -Pattern '^### PI-004 真实订阅、安装应用与自动接力验收\s*$' -Description 'Pi Agent 最终验收'
+Assert-Contains -RelativePath 'package.json' -Pattern '"@earendil-works/pi-coding-agent":\s*"0\.82\.1"' -Description 'Pi SDK 锁定版本'
 
 function Invoke-NpmGate {
     param([Parameter(Mandatory)][string]$Script)

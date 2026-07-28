@@ -43,6 +43,8 @@ pwsh -NoProfile -File scripts/check.ps1
 
 内容生意工作台任务对应 `npm run test:biz-NNN`，回执保存到 `artifacts/task-receipts/BIZ-NNN/`。
 
+Pi Agent 任务对应 `npm run test:pi-NNN`，回执保存到 `artifacts/task-receipts/PI-NNN/`。
+
 其中 TASK-014（任务 014）先运行 `npm run test:task-014:rules` 核验三平台规则来源与微信最低复制格式。
 
 ## 构建
@@ -63,3 +65,4 @@ TASK-018（任务 018）使用真实 Squirrel（Windows 安装器）静默安装
 
 - 最终人工完整链及发布裁决尚待 TASK-019（任务 019）。
 - 内容事业合伙人完整链尚待 BIZ-001 至 BIZ-008。
+- Pi 自动接力完整链尚待 PI-001 至 PI-004。

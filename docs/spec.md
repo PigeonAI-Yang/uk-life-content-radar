@@ -294,3 +294,23 @@ intelligence/<candidate-id>/candidate.json
 - 最后成功扫描时间、失败来源和明确数据缺口。
 
 快照只汇总真实对象，不让模型生成的文字代替数据库事实。
+
+## 16. Pi Agent 执行内核
+
+### 16.1 固定实现
+
+后台 Agent 固定使用 `@earendil-works/pi-coding-agent` SDK 并嵌入 Electron（桌面应用框架）主进程。不提供多执行器接口，不依赖用户全局安装 Pi，也不新增软件内聊天窗口。
+
+### 16.2 业务访问
+
+Pi 只能通过现有 MCP stdio helper、Windows Named Pipe（微软系统命名管道）和 `CommandDispatcher` 调用业务能力。Pi Runner 不持有业务数据库连接，不直接写业务根目录。MCP 继续排除 `strategy.approve` 与 `approval.approve`。
+
+### 16.3 认证顺序
+
+认证发现顺序为 Pi 自身 ChatGPT Plus/Pro 登录、本机 Codex（代码智能体）登录、Pi 官方 OAuth（开放授权）或设备码登录、用户 API Key。检测到凭据文件只表示候选存在；只有真实模型连接成功才能标记有效。
+
+API Key 使用 Electron `safeStorage` 调用 Windows DPAPI 加密后保存在应用配置目录，不进入 SQLite（本地数据库）、业务目录、日志或任务回执。
+
+### 16.4 错误
+
+Agent 错误码至少包含 `AGENT_AUTH_REQUIRED`、`AGENT_AUTH_EXPIRED`、`AGENT_MODEL_UNAVAILABLE`、`AGENT_MCP_UNAVAILABLE`、`AGENT_CANCELLED`、`AGENT_INTERRUPTED` 与 `AGENT_EXECUTION_FAILED`。认证失败不得循环重试或重复打开登录窗口。
