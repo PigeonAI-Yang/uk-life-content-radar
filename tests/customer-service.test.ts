@@ -73,4 +73,17 @@ describe('帖子到成交客户链', () => {
     expect((connection.prepare('SELECT count(*) AS count FROM conversation_records').get() as { count: number }).count).toBe(1);
     database.close();
   });
+
+  test('图片原件摘要使用文件信息而不是二进制乱码', () => {
+    const { database, rootPath, service } = workspace();
+    const imagePath = path.join(rootPath, 'wechat.jpg');
+    fs.writeFileSync(imagePath, Buffer.from([0xff, 0xd8, 0xff, 0x00, 0x01]));
+    const record = service.importConversation({
+      channel: 'wechat', occurredAt: new Date().toISOString(), filePath: imagePath,
+      summary: '微信截图', needs: [], objections: [], suggestedReply: '', conclusion: ''
+    });
+    expect('contentSummary' in record.originalFile && record.originalFile.contentSummary)
+      .toMatch(/^JPG 文件，5 字节，SHA-256 /);
+    database.close();
+  });
 });

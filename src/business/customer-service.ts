@@ -204,7 +204,11 @@ export class CustomerService {
     if (!fs.existsSync(filePath)) return { filePath, fileStatus: 'missing' };
     const info = this.fileInfo(filePath);
     const data = fs.readFileSync(filePath);
-    return { ...info, savedSha256: saved, contentSummary: data.toString('utf8').slice(0, 240),
+    const extension = path.extname(filePath).toLowerCase();
+    const contentSummary = ['.txt', '.md', '.json', '.csv'].includes(extension)
+      ? data.toString('utf8').slice(0, 240)
+      : `${extension.slice(1).toUpperCase() || '二进制'} 文件，${data.length} 字节，SHA-256 ${info.sha256}`;
+    return { ...info, savedSha256: saved, contentSummary,
       fileStatus: info.sha256 === saved ? 'present' : 'modified' };
   }
 

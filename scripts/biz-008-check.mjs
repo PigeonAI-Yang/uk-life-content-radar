@@ -2,7 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { chromium } from '@playwright/test';
 import { spawn } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import process from 'node:process';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -11,7 +11,11 @@ const receiptDirectory = resolve('artifacts', 'task-receipts', 'BIZ-008');
 const runDirectory = resolve(receiptDirectory, 'acceptance-workspace');
 const rootPath = resolve(runDirectory, 'business-root');
 const profilePath = resolve(runDirectory, 'profile');
-const privateMaterialPath = resolve(receiptDirectory, 'user-input', 'private-conversation.txt');
+const inputDirectory = resolve(receiptDirectory, 'user-input');
+const privateMaterialName = existsSync(inputDirectory)
+  ? readdirSync(inputDirectory).find((name) => /^private-conversation\./i.test(name))
+  : undefined;
+const privateMaterialPath = privateMaterialName ? resolve(inputDirectory, privateMaterialName) : undefined;
 const newSessionMarker = resolve(receiptDirectory, 'user-input', 'new-session-confirmed.txt');
 const executablePath = resolve('out', '自媒体桌面终端-win32-x64', 'content-media-terminal.exe');
 const helperPath = resolve('out', '自媒体桌面终端-win32-x64', 'resources', 'mcp-helper.cjs');
@@ -124,15 +128,15 @@ if (firstRun) {
     requireOk(await dispatch('package.request_approval', { candidateId: candidate.id }), `请求${platform}批准`);
     candidates.push(candidate);
   }
-  if (existsSync(privateMaterialPath)) {
+  if (privateMaterialPath) {
     lead = requireOk(await dispatch('lead.create', {
       caller: 'biz-008', idempotencyKey: 'real-lead', accountId: account.id,
-      productId: product.id, sourceContentId: content.id, platform: 'xiaohongshu',
+      productId: product.id, sourceContentId: content.id, platform: 'wechat',
       nickname: '用户提供的真实咨询', coreNeed: '待用户确认', intent: '待确认', nextAction: '核对原始对话'
     }), '记录真实客户');
     requireOk(await dispatch('conversation.import', {
       caller: 'biz-008', idempotencyKey: 'real-conversation', leadId: lead.id,
-      channel: 'xiaohongshu', occurredAt: new Date().toISOString(), filePath: privateMaterialPath,
+      channel: 'wechat', occurredAt: new Date().toISOString(), filePath: privateMaterialPath,
       summary: '真实对话待用户确认', needs: [], objections: [], suggestedReply: '', conclusion: ''
     }), '导入真实私信原件');
   }
@@ -145,17 +149,17 @@ if (firstRun) {
 }
 
 let beforeRestart = requireOk(await dispatch('business.snapshot', { accountId: account.id }), '重启前快照');
-if (existsSync(privateMaterialPath) && !beforeRestart.leads.length) {
+if (privateMaterialPath && !beforeRestart.leads.length) {
   product = beforeRestart.products[0];
   content = beforeRestart.contentSupply[0];
   lead = requireOk(await dispatch('lead.create', {
     caller: 'biz-008', idempotencyKey: 'real-lead', accountId: account.id,
-    productId: product.id, sourceContentId: content.id, platform: 'xiaohongshu',
+    productId: product.id, sourceContentId: content.id, platform: 'wechat',
     nickname: '用户提供的真实咨询', coreNeed: '待用户确认', intent: '待确认', nextAction: '核对原始对话'
   }), '记录真实客户');
   requireOk(await dispatch('conversation.import', {
     caller: 'biz-008', idempotencyKey: 'real-conversation', leadId: lead.id,
-    channel: 'xiaohongshu', occurredAt: new Date().toISOString(), filePath: privateMaterialPath,
+    channel: 'wechat', occurredAt: new Date().toISOString(), filePath: privateMaterialPath,
     summary: '真实对话待用户确认', needs: [], objections: [], suggestedReply: '', conclusion: ''
   }), '导入真实私信原件');
   beforeRestart = requireOk(await dispatch('business.snapshot', { accountId: account.id }), '导入后快照');
@@ -189,7 +193,7 @@ await client.close();
 await stop(runtime);
 
 const blockers = [];
-if (!existsSync(privateMaterialPath)) blockers.push(`缺少真实私信或微信原件：${privateMaterialPath}`);
+if (!privateMaterialPath) blockers.push(`缺少真实私信或微信原件：${resolve(inputDirectory, 'private-conversation.<原扩展名>')}`);
 if (!beforeRestart.approvedStrategies.length) blockers.push('经营策略提案仍需用户在桌面界面人工批准');
 if (!packages || packages.status !== 'completed') blockers.push('三个发布包仍需用户在桌面界面逐一人工批准并构建');
 if (beforeRestart.pending.unconfirmedConversations.length) blockers.push('真实沟通提取结果仍需用户确认');
