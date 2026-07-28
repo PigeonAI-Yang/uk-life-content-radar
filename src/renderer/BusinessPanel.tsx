@@ -10,7 +10,8 @@ type Product = {
 };
 type Proposal = {
   id: string; productId: string | null; rationale: string; successMeasure: string;
-  status: string; version: number; approvedStrategy: { versionFile: FileReadback } | null;
+  proposed: Record<string, unknown>; evidence: string[]; status: string; version: number;
+  approvedStrategy: { versionFile: FileReadback } | null;
 };
 type Lead = {
   id: string; nickname: string; platform: string; stage: string; coreNeed: string;
@@ -26,6 +27,7 @@ type ContentItem = { id: string; title: string };
 type Deal = { id: string; nickname: string; outcome: string; amount_minor: number | null; currency: string; reason: string };
 
 export function BusinessPanel() {
+  const [activeSection, setActiveSection] = useState<'today' | 'customers' | 'content' | 'product'>('today');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountId, setAccountId] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
@@ -40,6 +42,7 @@ export function BusinessPanel() {
     suitableFor: '', unsuitableFor: ''
   });
   const [rationale, setRationale] = useState('');
+  const [strategyReason, setStrategyReason] = useState('');
   const [successMeasure, setSuccessMeasure] = useState('');
   const [lead, setLead] = useState({ nickname: '', coreNeed: '', intent: '', nextAction: '' });
   const [conversation, setConversation] = useState({ leadId: '', text: '', summary: '' });
@@ -92,11 +95,11 @@ export function BusinessPanel() {
     const result = await window.terminal.business.dispatch('strategy.propose', {
       caller: 'ui', idempotencyKey: crypto.randomUUID(), accountId,
       productId: products[0]?.id, proposalType: 'conversion',
-      proposed: { direction: rationale }, rationale, evidence: [], successMeasure
+      proposed: { direction: rationale }, rationale: strategyReason || rationale, evidence: [], successMeasure
     });
     if (!result.ok) return setMessage(`${result.error.code}: ${result.error.message}`);
     setMessage('建议已记录，批准前不会成为正式经营策略。');
-    setRationale(''); setSuccessMeasure('');
+    setRationale(''); setStrategyReason(''); setSuccessMeasure('');
     await load(accountId);
   };
 
@@ -220,26 +223,39 @@ export function BusinessPanel() {
       <article><span>洽谈中的客户</span><strong>{leads.filter((item) => item.stage === 'negotiating').length}</strong></article>
       <article><span>今天要跟进</span><strong>{due.length}</strong></article>
     </div>
-    <div className="business-columns">
-      <section>
+    <div className="business-tabs" role="tablist" aria-label="经营工作区">
+      {([
+        ['today', '今日待办'],
+        ['customers', '客户与成交'],
+        ['content', '内容机会'],
+        ['product', '产品设置']
+      ] as const).map(([key, label]) =>
+        <Button key={key} role="tab" aria-selected={activeSection === key}
+          appearance="subtle" onClick={() => setActiveSection(key)}>{label}</Button>)}
+    </div>
+    <div className="business-tab-panel">
+      {activeSection === 'product' && <section className="business-section">
         <h2>产品与服务</h2>
-        <div className="business-form">
-          <Input aria-label="产品名称" placeholder="产品或服务名称" value={product.name} onChange={changeProduct('name')} />
-          <Input aria-label="目标客户" placeholder="适合谁" value={product.targetCustomer} onChange={changeProduct('targetCustomer')} />
-          <Textarea aria-label="解决的问题" placeholder="解决什么问题" value={product.problem} onChange={changeProduct('problem')} />
-          <Input aria-label="价格范围" placeholder="价格范围" value={product.priceRange} onChange={changeProduct('priceRange')} />
-          <Textarea aria-label="服务范围" placeholder="交付内容与边界" value={product.serviceScope} onChange={changeProduct('serviceScope')} />
-          <Input aria-label="适合情况" placeholder="适合的情况" value={product.suitableFor} onChange={changeProduct('suitableFor')} />
-          <Input aria-label="不适合情况" placeholder="不适合的情况" value={product.unsuitableFor} onChange={changeProduct('unsuitableFor')} />
-          <Button appearance="primary" disabled={!accountId || !product.name || !product.targetCustomer || !product.problem || !product.priceRange || !product.serviceScope} onClick={createProduct}>保存产品</Button>
-        </div>
+        <details className="business-disclosure">
+          <summary>新增产品或服务</summary>
+          <div className="business-form">
+            <Input aria-label="产品名称" placeholder="产品或服务名称" value={product.name} onChange={changeProduct('name')} />
+            <Input aria-label="目标客户" placeholder="适合谁" value={product.targetCustomer} onChange={changeProduct('targetCustomer')} />
+            <Textarea aria-label="解决的问题" placeholder="解决什么问题" value={product.problem} onChange={changeProduct('problem')} />
+            <Input aria-label="价格范围" placeholder="价格范围" value={product.priceRange} onChange={changeProduct('priceRange')} />
+            <Textarea aria-label="服务范围" placeholder="交付内容与边界" value={product.serviceScope} onChange={changeProduct('serviceScope')} />
+            <Input aria-label="适合情况" placeholder="适合的情况" value={product.suitableFor} onChange={changeProduct('suitableFor')} />
+            <Input aria-label="不适合情况" placeholder="不适合的情况" value={product.unsuitableFor} onChange={changeProduct('unsuitableFor')} />
+            <Button appearance="primary" disabled={!accountId || !product.name || !product.targetCustomer || !product.problem || !product.priceRange || !product.serviceScope} onClick={createProduct}>保存产品</Button>
+          </div>
+        </details>
         {products.map((item) => <article className="business-card" key={item.id}>
           <strong>{item.name}</strong><span>第 {item.version} 版 · {item.priceRange}</span>
           <p>{item.targetCustomer}：{item.problem}</p>
           <small>{item.versionFile.fileStatus} · {item.versionFile.filePath}</small>
         </article>)}
-      </section>
-      <section>
+      </section>}
+      {activeSection === 'content' && <section className="business-section">
         <h2>资讯候选</h2>
         {!candidates.length && <p className="empty-copy">还没有扫描候选。后台扫描只收集和整理，不会替你决定选题。</p>}
         {candidates.map((item) => {
@@ -255,39 +271,65 @@ export function BusinessPanel() {
             </div>}
           </article>;
         })}
-      </section>
-      <section>
-        <h2>经营建议</h2>
-        <p>Codex 可以提出建议；只有你在这里批准后，建议才成为正式策略。</p>
-        <div className="business-form">
-          <Textarea aria-label="经营建议" placeholder="例如：本周用英国租房押金新规吸引咨询，并在结尾引导私信材料清单" value={rationale} onChange={(_, data) => setRationale(data.value)} />
-          <Input aria-label="验证指标" placeholder="如何判断有效，例如：7天新增10条有效私信" value={successMeasure} onChange={(_, data) => setSuccessMeasure(data.value)} />
-          <Button disabled={!accountId || !products.length || !rationale || !successMeasure} onClick={propose}>记录为待批准建议</Button>
+      </section>}
+      {activeSection === 'today' && <section className="business-section">
+        <div className="business-section-heading">
+          <div><h2>今日待办</h2><p>先处理需要你判断的事项，批准前不会改变正式经营策略。</p></div>
+          <Button onClick={() => setActiveSection('customers')}>查看客户跟进</Button>
         </div>
+        {!proposals.some((item) => item.status === 'pending') && !leads.some((item) =>
+          item.conversations.some((record) => record.confirmationStatus === 'pending')) &&
+          <p className="business-empty">目前没有待批准或待确认事项。</p>}
         {proposals.map((item) => <article className="business-card" key={item.id}>
-          <strong>{item.status === 'pending' ? '待你批准' : item.status === 'approved' ? '已批准' : '已失效'}</strong>
-          <p>{item.rationale}</p><span>验证：{item.successMeasure}</span>
+          <div className="business-card-heading">
+            <strong>{item.status === 'pending' ? '经营建议待批准' : item.status === 'approved' ? '正式经营策略' : '已失效建议'}</strong>
+            <span>{item.status === 'pending' ? '需要你的决定' : item.status === 'approved' ? '已生效' : '仅供追溯'}</span>
+          </div>
+          <div className="strategy-proposal">
+            <h3>建议</h3>
+            <p>{String(item.proposed.direction ?? item.proposed.summary ?? '建议正文缺失，请勿批准')}</p>
+            <dl>
+              <div><dt>为什么现在做</dt><dd>{item.rationale}</dd></div>
+              <div><dt>判断依据</dt><dd>{item.evidence.length ? item.evidence.join('；') : '暂未提供依据'}</dd></div>
+              <div><dt>如何判断有效</dt><dd>{item.successMeasure}</dd></div>
+            </dl>
+          </div>
           {item.status === 'pending' && <Button appearance="primary" onClick={() => approve(item)}>批准为正式策略</Button>}
           {item.approvedStrategy && <small>{item.approvedStrategy.versionFile.fileStatus} · {item.approvedStrategy.versionFile.filePath}</small>}
         </article>)}
-      </section>
-      <section>
+        <details className="business-disclosure">
+          <summary>提出新的经营建议</summary>
+          <div className="business-form">
+            <Textarea aria-label="经营建议" placeholder="具体建议做什么" value={rationale} onChange={(_, data) => setRationale(data.value)} />
+            <Input aria-label="建议依据" placeholder="为什么现在值得做" value={strategyReason} onChange={(_, data) => setStrategyReason(data.value)} />
+            <Input aria-label="验证指标" placeholder="如何判断有效，例如：7天新增10条有效私信" value={successMeasure} onChange={(_, data) => setSuccessMeasure(data.value)} />
+            <Button disabled={!accountId || !products.length || !rationale || !successMeasure} onClick={propose}>提交为待批准建议</Button>
+          </div>
+        </details>
+      </section>}
+      {activeSection === 'customers' && <section className="business-section">
         <h2>客户与成交</h2>
-        <div className="business-form">
-          <Input aria-label="客户昵称" placeholder="私信客户昵称" value={lead.nickname} onChange={(_, data) => setLead((value) => ({ ...value, nickname: data.value }))} />
-          <Input aria-label="客户需求" placeholder="核心需求" value={lead.coreNeed} onChange={(_, data) => setLead((value) => ({ ...value, coreNeed: data.value }))} />
-          <Input aria-label="客户意向" placeholder="意向与预算" value={lead.intent} onChange={(_, data) => setLead((value) => ({ ...value, intent: data.value }))} />
-          <Input aria-label="下一步动作" placeholder="下一步跟进" value={lead.nextAction} onChange={(_, data) => setLead((value) => ({ ...value, nextAction: data.value }))} />
-          <Button disabled={!accountId || !lead.nickname} onClick={createLead}>记录新私信客户</Button>
-        </div>
-        <div className="business-form">
-          <Select aria-label="沟通所属客户" value={conversation.leadId} onChange={(event) => setConversation((value) => ({ ...value, leadId: event.target.value }))}>
-            <option value="">身份未确认，暂不关联</option>
-            {leads.map((item) => <option key={item.id} value={item.id}>{item.nickname}</option>)}
-          </Select>
-          <Textarea aria-label="沟通原文" placeholder="粘贴私信、微信对话或口述记录" value={conversation.text} onChange={(_, data) => setConversation((value) => ({ ...value, text: data.value }))} />
-          <Input aria-label="沟通摘要" placeholder="这次沟通说了什么" value={conversation.summary} onChange={(_, data) => setConversation((value) => ({ ...value, summary: data.value }))} />
-          <Button disabled={!conversation.text || !conversation.summary} onClick={importConversation}>保存沟通原件</Button>
+        <div className="business-actions">
+          <details className="business-disclosure"><summary>记录新私信客户</summary>
+            <div className="business-form">
+              <Input aria-label="客户昵称" placeholder="私信客户昵称" value={lead.nickname} onChange={(_, data) => setLead((value) => ({ ...value, nickname: data.value }))} />
+              <Input aria-label="客户需求" placeholder="核心需求" value={lead.coreNeed} onChange={(_, data) => setLead((value) => ({ ...value, coreNeed: data.value }))} />
+              <Input aria-label="客户意向" placeholder="意向与预算" value={lead.intent} onChange={(_, data) => setLead((value) => ({ ...value, intent: data.value }))} />
+              <Input aria-label="下一步动作" placeholder="下一步跟进" value={lead.nextAction} onChange={(_, data) => setLead((value) => ({ ...value, nextAction: data.value }))} />
+              <Button disabled={!accountId || !lead.nickname} onClick={createLead}>保存客户</Button>
+            </div>
+          </details>
+          <details className="business-disclosure"><summary>导入沟通记录</summary>
+            <div className="business-form">
+              <Select aria-label="沟通所属客户" value={conversation.leadId} onChange={(event) => setConversation((value) => ({ ...value, leadId: event.target.value }))}>
+                <option value="">身份未确认，暂不关联</option>
+                {leads.map((item) => <option key={item.id} value={item.id}>{item.nickname}</option>)}
+              </Select>
+              <Textarea aria-label="沟通原文" placeholder="粘贴私信、微信对话或口述记录" value={conversation.text} onChange={(_, data) => setConversation((value) => ({ ...value, text: data.value }))} />
+              <Input aria-label="沟通摘要" placeholder="这次沟通说了什么" value={conversation.summary} onChange={(_, data) => setConversation((value) => ({ ...value, summary: data.value }))} />
+              <Button disabled={!conversation.text || !conversation.summary} onClick={importConversation}>保存沟通原件</Button>
+            </div>
+          </details>
         </div>
         {leads.map((item) => <article className="business-card" key={item.id}>
           <strong>{item.nickname}</strong><span>{stageNames[item.stage] ?? item.stage} · {item.platform}</span>
@@ -304,7 +346,7 @@ export function BusinessPanel() {
           </div>)}
           {!item.conversations.length && <small>还没有沟通记录，可在上方粘贴私信或微信对话。</small>}
         </article>)}
-        <h3>记录成交结果</h3>
+        <details className="business-disclosure"><summary>记录成交结果</summary>
         <div className="business-form">
           <Select aria-label="成交客户" value={deal.leadId} onChange={(event) => setDeal((value) => ({ ...value, leadId: event.target.value }))}>
             <option value="">选择客户</option>
@@ -317,12 +359,12 @@ export function BusinessPanel() {
           <Input aria-label="结果原因" placeholder="成交或未成交的主要原因" value={deal.reason} onChange={(_, data) => setDeal((value) => ({ ...value, reason: data.value }))} />
           <Textarea aria-label="内容启发" placeholder="这次结果对下一轮内容有什么启发" value={deal.contentInsight} onChange={(_, data) => setDeal((value) => ({ ...value, contentInsight: data.value }))} />
           <Button disabled={!deal.leadId || !deal.reason} onClick={recordDeal}>保存成交结果</Button>
-        </div>
+        </div></details>
         {deals.map((item) => <article className="business-card" key={item.id}>
           <strong>{item.nickname} · {item.outcome === 'won' ? '已成交' : '未成交'}</strong>
           <span>{item.amount_minor === null ? '未记录金额' : `${item.currency} ${(item.amount_minor / 100).toFixed(2)}`} · {item.reason}</span>
         </article>)}
-        <h3>记录帖子表现</h3>
+        <details className="business-disclosure"><summary>记录帖子表现</summary>
         <div className="business-form">
           <Select aria-label="表现所属内容" value={metrics.contentId} onChange={(event) => setMetrics((value) => ({ ...value, contentId: event.target.value }))}>
             <option value="">选择内容</option>
@@ -333,8 +375,8 @@ export function BusinessPanel() {
               ({ views: '浏览', likes: '点赞', saves: '收藏', comments: '评论', messages: '私信' })[field]
             } value={metrics[field]} onChange={(_, data) => setMetrics((value) => ({ ...value, [field]: data.value }))} />)}
           <Button disabled={!metrics.contentId} onClick={recordMetrics}>保存手工观察</Button>
-        </div>
-      </section>
+        </div></details>
+      </section>}
     </div>
   </section>;
 }

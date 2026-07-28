@@ -81,6 +81,9 @@ try {
       await page.evaluate((filePath) => globalThis.terminal.system.capturePage(filePath), resolve(receiptDirectory, '经营.png'));
     }
     if (globalThis.process.env.UI_RECEIPT_ID === 'BIZ-003' && route === '经营') {
+      await page.getByRole('tab', { name: '客户与成交' }).click();
+      await page.getByText('记录成交结果', { exact: true }).click();
+      await page.getByText('记录帖子表现', { exact: true }).click();
       for (const label of ['成交客户', '成交结果', '表现所属内容']) {
         if (!await page.getByRole('combobox', { name: label }).count()) throw new Error(`经营页缺少 ${label} 入口`);
       }
