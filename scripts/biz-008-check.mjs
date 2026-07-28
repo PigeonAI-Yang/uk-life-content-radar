@@ -12,6 +12,7 @@ const runDirectory = resolve(receiptDirectory, 'acceptance-workspace');
 const rootPath = resolve(runDirectory, 'business-root');
 const profilePath = resolve(runDirectory, 'profile');
 const privateMaterialPath = resolve(receiptDirectory, 'user-input', 'private-conversation.txt');
+const newSessionMarker = resolve(receiptDirectory, 'user-input', 'new-session-confirmed.txt');
 const executablePath = resolve('out', '自媒体桌面终端-win32-x64', 'content-media-terminal.exe');
 const helperPath = resolve('out', '自媒体桌面终端-win32-x64', 'resources', 'mcp-helper.cjs');
 mkdirSync(runDirectory, { recursive: true });
@@ -143,7 +144,37 @@ if (firstRun) {
   account = accounts.items[0];
 }
 
-const beforeRestart = requireOk(await dispatch('business.snapshot', { accountId: account.id }), '重启前快照');
+let beforeRestart = requireOk(await dispatch('business.snapshot', { accountId: account.id }), '重启前快照');
+if (existsSync(privateMaterialPath) && !beforeRestart.leads.length) {
+  product = beforeRestart.products[0];
+  content = beforeRestart.contentSupply[0];
+  lead = requireOk(await dispatch('lead.create', {
+    caller: 'biz-008', idempotencyKey: 'real-lead', accountId: account.id,
+    productId: product.id, sourceContentId: content.id, platform: 'xiaohongshu',
+    nickname: '用户提供的真实咨询', coreNeed: '待用户确认', intent: '待确认', nextAction: '核对原始对话'
+  }), '记录真实客户');
+  requireOk(await dispatch('conversation.import', {
+    caller: 'biz-008', idempotencyKey: 'real-conversation', leadId: lead.id,
+    channel: 'xiaohongshu', occurredAt: new Date().toISOString(), filePath: privateMaterialPath,
+    summary: '真实对话待用户确认', needs: [], objections: [], suggestedReply: '', conclusion: ''
+  }), '导入真实私信原件');
+  beforeRestart = requireOk(await dispatch('business.snapshot', { accountId: account.id }), '导入后快照');
+}
+const packageCandidates = requireOk(await dispatch('package.list_candidates', { query: '', limit: 10 }), '读取发布候选').items;
+const approvals = [];
+for (const candidate of packageCandidates) {
+  approvals.push(requireOk(await dispatch('package.get_approval', { candidateId: candidate.id }), '读取发布批准'));
+}
+let packages;
+if (packageCandidates.length === 3 && approvals.every((approval) => approval.status === 'approved')) {
+  packages = requireOk(await dispatch('package.build', {
+    caller: 'biz-008', idempotencyKey: 'final-three-platform-build',
+    candidateIds: packageCandidates.map((candidate) => candidate.id)
+  }), '构建三平台发布包');
+}
+const metrics = beforeRestart.contentSupply[0]
+  ? requireOk(await dispatch('post_metrics.list', { contentId: beforeRestart.contentSupply[0].id }), '读取帖子表现').items
+  : [];
 await stop(runtime);
 runtime = await start(9269);
 const client = new Client({ name: 'biz-008-new-session', version: '1.0.0' });
@@ -159,15 +190,19 @@ await stop(runtime);
 
 const blockers = [];
 if (!existsSync(privateMaterialPath)) blockers.push(`缺少真实私信或微信原件：${privateMaterialPath}`);
-if (beforeRestart.pendingStrategyProposals.length) blockers.push('经营策略提案仍需用户在桌面界面人工批准');
-blockers.push('三个发布包仍需用户在桌面界面逐一人工批准并构建');
-blockers.push('真实平台表现、加微信和成交/未成交结果尚需用户提供并确认');
-blockers.push('需在新的 Codex 对话中实际调用已安装 Skill 并说“开始工作”');
+if (!beforeRestart.approvedStrategies.length) blockers.push('经营策略提案仍需用户在桌面界面人工批准');
+if (!packages || packages.status !== 'completed') blockers.push('三个发布包仍需用户在桌面界面逐一人工批准并构建');
+if (beforeRestart.pending.unconfirmedConversations.length) blockers.push('真实沟通提取结果仍需用户确认');
+if (!metrics.length) blockers.push('真实平台表现尚需用户在经营页登记');
+if (!beforeRestart.deals.length) blockers.push('加微信和成交/未成交结果尚需用户在经营页确认');
+if (!existsSync(newSessionMarker)) blockers.push(`需在新的 Codex 对话中实际调用已安装 Skill 并说“开始工作”，确认后记录：${newSessionMarker}`);
 const result = {
   task: 'BIZ-008', status: blockers.length ? 'partial' : 'completed',
   officialSource: 'https://www.gov.uk/guidance/renters-rights-act-overview-for-tenants',
   rootPath, profilePath, firstRun, accountId: account.id,
   beforeRestart, afterRestart: afterRestart.result,
+  publishing: { packageCandidates, approvals, packages },
+  metrics,
   mcp: { toolCount: tools.length, snapshotAvailable: tools.includes('business.snapshot'),
     strategyApprovalExposed: tools.includes('strategy.approve'), finalApprovalExposed: tools.includes('approval.approve') },
   blockers
