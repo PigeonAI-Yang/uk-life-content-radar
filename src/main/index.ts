@@ -1,4 +1,5 @@
-import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, ipcMain, safeStorage, shell } from 'electron';
+import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
 import started from 'electron-squirrel-startup';
@@ -9,6 +10,8 @@ import { startPipeServer } from './pipe-server';
 import { BrowserManager } from './browser-manager';
 import { runSharpProbe } from './sharp-probe';
 import { PiAgentExecutor } from '../agent/pi-agent-executor';
+import { EncryptedApiKeyStore, importCodexSubscription, scanAgentAuth } from '../agent/auth-service';
+import { ModelRuntime } from '@earendil-works/pi-coding-agent';
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
@@ -63,11 +66,18 @@ void app.whenReady().then(() => {
   const configPath = path.join(app.getPath('userData'), 'root.json');
   let dispatcher: CommandDispatcher | undefined;
   const pipeState: { current?: ReturnType<typeof startPipeServer> } = {};
+  const agentDir = path.join(app.getPath('userData'), 'pi-agent');
+  const apiKeyStore = new EncryptedApiKeyStore(path.join(app.getPath('userData'), 'agent-api-key.json'), safeStorage);
+  const authStatus = () => scanAgentAuth({
+    piAuthPath: path.join(agentDir, 'auth.json'),
+    codexAuthPath: path.join(os.homedir(), '.codex', 'auth.json'),
+    apiKeyConfigured: apiKeyStore.isConfigured()
+  });
   const configureAgent = () => {
     if (!dispatcher || !pipeState.current) return;
     dispatcher.setAgentExecutor(new PiAgentExecutor({
       cwd: app.getAppPath(),
-      agentDir: path.join(app.getPath('userData'), 'pi-agent'),
+      agentDir,
       executablePath: process.execPath,
       helperPath: app.isPackaged
         ? path.join(process.resourcesPath, 'mcp-helper.cjs')
@@ -75,9 +85,39 @@ void app.whenReady().then(() => {
       discoveryPath: pipeState.current.discoveryPath,
       skillPath: app.isPackaged
         ? path.join(process.resourcesPath, 'content-business-partner', 'SKILL.md')
-        : path.resolve('skills', 'content-business-partner', 'SKILL.md')
+        : path.resolve('skills', 'content-business-partner', 'SKILL.md'),
+      apiKeyProvider: () => apiKeyStore.isConfigured() ? apiKeyStore.load() : undefined
     }));
   };
+  ipcMain.handle('agent:scan-auth', () => authStatus());
+  ipcMain.handle('agent:save-api-key', (_event, apiKey: string) => {
+    apiKeyStore.save(apiKey);
+    return authStatus();
+  });
+  ipcMain.handle('agent:import-codex', async () => {
+    await importCodexSubscription(
+      path.join(os.homedir(), '.codex', 'auth.json'),
+      path.join(agentDir, 'auth.json')
+    );
+    return authStatus();
+  });
+  ipcMain.handle('agent:login', async (_event, method: 'browser' | 'device_code') => {
+    const runtime = await ModelRuntime.create({ authPath: path.join(agentDir, 'auth.json') });
+    await runtime.login('openai-codex', 'oauth', {
+      prompt: async (prompt) => {
+        if (prompt.type === 'select') return method;
+        return new Promise<string>((_resolve, reject) => {
+          prompt.signal?.addEventListener('abort', () => reject(new Error('登录输入已取消')), { once: true });
+        });
+      },
+      notify: (event) => {
+        mainWindow?.webContents.send('agent:auth-event', event);
+        if (event.type === 'auth_url') void shell.openExternal(event.url);
+        if (event.type === 'device_code') void shell.openExternal(event.verificationUri);
+      }
+    });
+    return authStatus();
+  });
   if (fs.existsSync(configPath)) {
     const saved = JSON.parse(fs.readFileSync(configPath, 'utf8')) as RootSettings;
     dispatcher = new CommandDispatcher(database.getConnection(saved.databasePath), saved.rootPath, browser);

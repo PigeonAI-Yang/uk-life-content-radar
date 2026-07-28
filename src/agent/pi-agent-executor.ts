@@ -14,6 +14,7 @@ type PiAgentOptions = {
   helperPath: string;
   discoveryPath: string;
   skillPath: string;
+  apiKeyProvider?: () => string | undefined;
 };
 
 function assistantSummary(messages: unknown[]) {
@@ -39,7 +40,10 @@ export class PiAgentExecutor implements AgentExecutor {
     const client = new Client({ name: 'content-media-terminal-pi', version: '0.1.0' });
     let session: AgentSession | undefined;
     let toolCalls = 0;
+    const previousApiKey = process.env.OPENAI_API_KEY;
     try {
+      const apiKey = this.options.apiKeyProvider?.();
+      if (apiKey) process.env.OPENAI_API_KEY = apiKey;
       await client.connect(new StdioClientTransport({
         command: this.options.executablePath,
         args: [this.options.helperPath],
@@ -128,6 +132,8 @@ export class PiAgentExecutor implements AgentExecutor {
       }
       throw new BusinessError('AGENT_EXECUTION_FAILED', 'Pi 执行失败', message);
     } finally {
+      if (previousApiKey === undefined) delete process.env.OPENAI_API_KEY;
+      else process.env.OPENAI_API_KEY = previousApiKey;
       session?.dispose();
       await client.close().catch(() => undefined);
     }

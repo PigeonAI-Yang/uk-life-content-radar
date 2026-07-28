@@ -103,6 +103,8 @@ Assert-Contains -RelativePath 'docs/tasks.md' -Pattern '^### PI-004 真实订阅
 Assert-Contains -RelativePath 'package.json' -Pattern '"@earendil-works/pi-coding-agent":\s*"0\.82\.1"' -Description 'Pi SDK 锁定版本'
 Assert-Contains -RelativePath 'src/tasks/task-service.ts' -Pattern "type === 'agent\.execute'" -Description 'Pi 持久任务入口'
 Assert-Contains -RelativePath 'src/agent/pi-agent-executor.ts' -Pattern "name: 'terminal_mcp'" -Description 'Pi 仅通过统一 MCP 工具入口'
+Assert-Contains -RelativePath 'src/business/dispatcher.ts' -Pattern "triggerEvent: 'strategy\.approved'" -Description '批准后自动创建 Pi 接力'
+Assert-Contains -RelativePath 'src/renderer/SettingsPanel.tsx' -Pattern '使用本机 Codex 登录' -Description 'Pi 登录设置入口'
 
 function Invoke-NpmGate {
     param([Parameter(Mandatory)][string]$Script)

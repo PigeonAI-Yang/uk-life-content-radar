@@ -97,6 +97,36 @@ export function requireAgentAuth(status: AgentAuthStatus): AgentAuthStatus {
   return status;
 }
 
+export async function importCodexSubscription(codexAuthPath: string, piAuthPath: string) {
+  const data = JSON.parse(fs.readFileSync(codexAuthPath, 'utf8')) as {
+    auth_mode?: unknown;
+    tokens?: { access_token?: unknown; refresh_token?: unknown; account_id?: unknown };
+  };
+  const access = String(data.tokens?.access_token ?? '');
+  const refresh = String(data.tokens?.refresh_token ?? '');
+  const accountId = String(data.tokens?.account_id ?? '');
+  let expires = 0;
+  try {
+    const payload = JSON.parse(Buffer.from(access.split('.')[1], 'base64url').toString('utf8')) as { exp?: unknown };
+    expires = Number(payload.exp) * 1000;
+  } catch {
+    // Invalid candidates are rejected below without exposing token contents.
+  }
+  if (data.auth_mode !== 'chatgpt' || !access || !refresh || !accountId || !Number.isFinite(expires) || expires <= 0) {
+    throw new BusinessError('AGENT_AUTH_REQUIRED', '本机 Codex 登录无法导入', '在设置中重新进行订阅登录');
+  }
+  fs.mkdirSync(path.dirname(piAuthPath), { recursive: true });
+  const current = fs.existsSync(piAuthPath)
+    ? JSON.parse(fs.readFileSync(piAuthPath, 'utf8')) as Record<string, unknown>
+    : {};
+  const temporaryPath = `${piAuthPath}.tmp`;
+  fs.writeFileSync(temporaryPath, JSON.stringify({
+    ...current,
+    'openai-codex': { type: 'oauth', access, refresh, accountId, expires }
+  }), { mode: 0o600 });
+  fs.renameSync(temporaryPath, piAuthPath);
+}
+
 export class EncryptedApiKeyStore {
   constructor(
     private readonly filePath: string,

@@ -10,6 +10,17 @@ contextBridge.exposeInMainWorld('terminal', {
   business: {
     dispatch: (name: string, input: unknown) => ipcRenderer.invoke('business:dispatch', name, input)
   },
+  agent: {
+    scanAuth: () => ipcRenderer.invoke('agent:scan-auth'),
+    saveApiKey: (apiKey: string) => ipcRenderer.invoke('agent:save-api-key', apiKey),
+    importCodex: () => ipcRenderer.invoke('agent:import-codex'),
+    login: (method: 'browser' | 'device_code') => ipcRenderer.invoke('agent:login', method),
+    onAuthEvent: (listener: (event: unknown) => void) => {
+      const handler = (_event: unknown, value: unknown) => listener(value);
+      ipcRenderer.on('agent:auth-event', handler);
+      return () => ipcRenderer.removeListener('agent:auth-event', handler);
+    }
+  },
   lifecycle: {
     quit: () => ipcRenderer.invoke('app:quit'),
     closeWindow: () => ipcRenderer.invoke('app:close-window'),

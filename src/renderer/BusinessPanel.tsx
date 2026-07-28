@@ -108,7 +108,13 @@ export function BusinessPanel() {
       id: item.id, expectedVersion: item.version
     });
     if (!result.ok) return setMessage(`${result.error.code}: ${result.error.message}`);
-    setMessage('经营策略已由你批准并保存为正式版本。');
+    const handoff = result.result as {
+      agentTask: { id: string; status: string } | null;
+      dispatchError: { code: string; message: string } | null;
+    };
+    setMessage(handoff.agentTask
+      ? `策略已批准，Pi 接力任务 ${handoff.agentTask.id.slice(0, 8)} 已进入队列。可到“任务”查看。`
+      : `策略已批准，但接力失败：${handoff.dispatchError?.message ?? '请到任务页重试'}`);
     await load(accountId);
   };
 

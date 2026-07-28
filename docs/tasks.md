@@ -58,8 +58,8 @@
 | BIZ-008 | 真实帖子至成交样例与完整验收 | 内容生意工作台 | BIZ-007 | partial（部分完成） |
 | PI-001 | Pi 产品契约、依赖、认证探测与失败实验 | Pi Agent 执行内核 | BIZ-007 | completed（已完成） |
 | PI-002 | 持久 Agent 任务、Pi Runner、MCP 工具链与重启恢复 | Pi Agent 执行内核 | PI-001 | completed（已完成） |
-| PI-003 | 批准触发、任务与设置界面、取消和错误状态 | Pi Agent 执行内核 | PI-002 | in_progress（执行中） |
-| PI-004 | 真实订阅、安装应用与自动接力验收 | Pi Agent 执行内核 | PI-003 | pending（待执行） |
+| PI-003 | 批准触发、任务与设置界面、取消和错误状态 | Pi Agent 执行内核 | PI-002 | completed（已完成） |
+| PI-004 | 真实订阅、安装应用与自动接力验收 | Pi Agent 执行内核 | PI-003 | in_progress（执行中） |
 
 ## 3. 任务详情
 

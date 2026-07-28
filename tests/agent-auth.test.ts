@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
-import { EncryptedApiKeyStore, requireAgentAuth, scanAgentAuth } from '../src/agent/auth-service';
+import { readStoredCredential } from '@earendil-works/pi-coding-agent';
+import { EncryptedApiKeyStore, importCodexSubscription, requireAgentAuth, scanAgentAuth } from '../src/agent/auth-service';
 
 const temporaryPaths: string[] = [];
 
@@ -61,5 +62,20 @@ describe('Pi 认证探测', () => {
     store.save('secret-api-key');
     expect(fs.readFileSync(filePath, 'utf8')).not.toContain('secret-api-key');
     expect(store.load()).toBe('secret-api-key');
+  });
+
+  test('Codex 订阅转换为 Pi 凭据且不返回令牌', async () => {
+    const target = workspace();
+    const codexAuthPath = path.join(target, 'codex-auth.json');
+    const piAuthPath = path.join(target, 'pi', 'auth.json');
+    const payload = Buffer.from(JSON.stringify({ exp: 4_102_444_800 })).toString('base64url');
+    fs.writeFileSync(codexAuthPath, JSON.stringify({
+      auth_mode: 'chatgpt',
+      tokens: { access_token: `header.${payload}.signature`, refresh_token: 'refresh', account_id: 'account' }
+    }));
+    expect(await importCodexSubscription(codexAuthPath, piAuthPath)).toBeUndefined();
+    expect(readStoredCredential('openai-codex', piAuthPath)).toMatchObject({
+      type: 'oauth', accountId: 'account', expires: 4_102_444_800_000
+    });
   });
 });

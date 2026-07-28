@@ -14,10 +14,14 @@ type Task = {
 export function TaskPanel() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const statusNames: Record<string, string> = {
-    queued: '排队中（queued）', running: '执行中（running）', completed: '已完成（completed）',
+    queued: '排队中', running: '执行中', succeeded: '已完成',
     failed: '失败（failed）', partial: '部分成功（partial）', cancelled: '已取消（cancelled）', interrupted: '已中断（interrupted）'
   };
-  const typeNames: Record<string, string> = { 'file.write': '写入文件（file.write）', 'file.write_batch': '批量写入文件（file.write_batch）' };
+  const typeNames: Record<string, string> = {
+    'agent.execute': 'Pi 接力工作',
+    'file.write': '写入文件',
+    'file.write_batch': '批量写入文件'
+  };
   const resultText = (value: unknown) => {
     if (!value || typeof value !== 'object') return value ? String(value) : '—';
     const item = value as { filePath?: string; succeeded?: number; failed?: number };
@@ -38,19 +42,6 @@ export function TaskPanel() {
     });
   }, []);
 
-  const start = async () => {
-    await window.terminal.business.dispatch('task.start', {
-      caller: 'ui',
-      idempotencyKey: crypto.randomUUID(),
-      type: 'file.write',
-      parameters: {
-        relativePath: `sources/ui-task-${Date.now()}.txt`,
-        content: '界面任务产物',
-        durationMs: 1000
-      }
-    });
-    await refresh();
-  };
   const cancel = async (taskId: string) => {
     await window.terminal.business.dispatch('task.cancel', { taskId });
     await refresh();
@@ -59,8 +50,8 @@ export function TaskPanel() {
   return (
     <section className="task-panel">
       <div className="page-heading">
-        <h2>持久任务</h2>
-        <div><Button onClick={refresh}>刷新</Button> <Button appearance="primary" onClick={start}>启动验证任务</Button></div>
+        <div><h2>任务</h2><p>查看 Pi 接力工作和真实产物；需要时可取消正在运行的任务。</p></div>
+        <div><Button onClick={refresh}>刷新</Button></div>
       </div>
       {tasks.length === 0 ? <p>暂无任务。</p> : tasks.map((task) => (
         <div className="task-row" key={task.id}>

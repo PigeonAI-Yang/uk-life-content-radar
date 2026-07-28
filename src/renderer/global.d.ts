@@ -13,6 +13,13 @@ declare global {
       business: {
         dispatch(name: string, input: unknown): Promise<DispatchResult>;
       };
+      agent: {
+        scanAuth(): Promise<unknown>;
+        saveApiKey(apiKey: string): Promise<unknown>;
+        importCodex(): Promise<unknown>;
+        login(method: 'browser' | 'device_code'): Promise<unknown>;
+        onAuthEvent(listener: (event: unknown) => void): () => void;
+      };
       lifecycle: {
         quit(): Promise<void>;
         closeWindow(): Promise<void>;

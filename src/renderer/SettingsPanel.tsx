@@ -7,6 +7,9 @@ export function SettingsPanel() {
   const [settings, setSettings] = useState<RootSettings>();
   const [error, setError] = useState('');
   const [scanning, setScanning] = useState(false);
+  const [apiKey, setApiKey] = useState('');
+  const [auth, setAuth] = useState<{ selected: string | null; candidates: { source: string; detected: boolean; message: string }[] }>();
+  const [authEvent, setAuthEvent] = useState('');
   const [business, setBusiness] = useState<{
     rootPath: string; databasePath: string; databaseByteSize: number; temporaryPath: string; exportDirectory: string;
     platformTemplates: Record<string, unknown>; index: { available: boolean; indexed: number; objects: number };
@@ -26,6 +29,11 @@ export function SettingsPanel() {
   };
 
   useEffect(() => {
+    void window.terminal.agent.scanAuth().then((value) => setAuth(value as typeof auth));
+    const unsubscribe = window.terminal.agent.onAuthEvent((value) => {
+      const event = value as { type?: string; userCode?: string; instructions?: string };
+      setAuthEvent(event.type === 'device_code' ? `验证码：${event.userCode}` : event.instructions ?? '请在浏览器完成登录');
+    });
     void window.terminal.settings.get().then((value) => {
       if (value) {
         setSettings(value);
@@ -39,6 +47,7 @@ export function SettingsPanel() {
         });
       }
     });
+    return unsubscribe;
   }, []);
 
   const chooseRoot = async () => {
@@ -95,6 +104,25 @@ export function SettingsPanel() {
           }}>{scanning ? '扫描中…' : '扫描存储'}</Button>
         </div></>
       )}
+      <section className="settings-agent">
+        <div className="panel-heading"><div><h2>Pi 工作助手</h2><p>优先使用 ChatGPT Plus/Pro 订阅，也可使用加密保存的 API Key。</p></div></div>
+        <p>{auth?.selected ? '已检测到可用登录候选，连接后才会确认有效。' : '尚未登录。'}</p>
+        {auth?.candidates.map((item) => <small key={item.source}>{item.message}<br /></small>)}
+        {authEvent && <MessageBar><MessageBarBody>{authEvent}</MessageBarBody></MessageBar>}
+        <div className="settings-row">
+          <Button onClick={async () => setAuth(await window.terminal.agent.scanAuth() as typeof auth)}>扫描本机登录</Button>
+          <Button onClick={async () => setAuth(await window.terminal.agent.importCodex() as typeof auth)}>使用本机 Codex 登录</Button>
+          <Button onClick={async () => setAuth(await window.terminal.agent.login('browser') as typeof auth)}>订阅登录</Button>
+          <Button onClick={async () => setAuth(await window.terminal.agent.login('device_code') as typeof auth)}>验证码登录</Button>
+        </div>
+        <div className="settings-row">
+          <Input type="password" aria-label="OpenAI API Key" placeholder="输入 API Key" value={apiKey} onChange={(_, data) => setApiKey(data.value)} />
+          <Button disabled={!apiKey} onClick={async () => {
+            setAuth(await window.terminal.agent.saveApiKey(apiKey) as typeof auth);
+            setApiKey('');
+          }}>加密保存</Button>
+        </div>
+      </section>
       <Button onClick={() => window.terminal.lifecycle.quit()}>完全退出</Button>
     </section>
   );

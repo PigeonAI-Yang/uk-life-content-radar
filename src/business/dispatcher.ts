@@ -131,7 +131,27 @@ export class CommandDispatcher {
       );
     }
     if (command === 'strategy.approve') {
-      return this.management.approveStrategy(String(input.id), Number(input.expectedVersion));
+      const strategy = this.management.approveStrategy(String(input.id), Number(input.expectedVersion));
+      try {
+        const agentTask = this.tasks.start({
+          caller: 'strategy-approval',
+          idempotencyKey: `${strategy.id}:${strategy.version}`,
+          type: 'agent.execute',
+          parameters: {
+            accountId: strategy.accountId,
+            objectId: strategy.id,
+            objectVersion: strategy.version,
+            triggerEvent: 'strategy.approved',
+            goal: `执行刚批准的经营策略：${strategy.rationale}`
+          }
+        });
+        return { strategy, agentTask, dispatchError: null };
+      } catch (error) {
+        const failure = error instanceof BusinessError
+          ? error
+          : new BusinessError('AGENT_EXECUTION_FAILED', '经营策略已批准，但接力任务创建失败', '在任务页重新发起');
+        return { strategy, agentTask: null, dispatchError: failure.toJSON() };
+      }
     }
     if (command === 'lead.create') {
       return this.runIdempotent(command, input, () => this.customers.createLead(input));
