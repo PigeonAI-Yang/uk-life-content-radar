@@ -13,6 +13,7 @@ accounts/
 sources/
 assets/
 packages/
+contents/
 
 # Local release artifact; publish installers as GitHub Release assets.
 *.exe
