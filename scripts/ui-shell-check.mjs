@@ -68,26 +68,26 @@ try {
   if (globalThis.process.env.UI_RECEIPT_ID === 'UIR-002') {
     await page.evaluate((filePath) => globalThis.terminal.system.capturePage(filePath), resolve(receiptDirectory, 'workbench.png'));
   }
-  for (const route of ['浏览与收集', '资料库', '内容', '素材库', '发布包', '经营', '账号', '任务', '设置']) {
+  for (const route of ['浏览与收集', '资料库', '内容', '素材库', '发布包', '情报', '账号', '任务', '设置']) {
     await page.getByRole('button', { name: route }).click();
-    await page.getByRole('heading', { name: route, exact: true }).waitFor();
+    await page.getByRole('heading', { name: route, exact: true, level: 1 }).waitFor();
     if (globalThis.process.env.UI_RECEIPT_ID === 'UIR-002' && ['资料库', '内容'].includes(route)) {
       await page.evaluate((filePath) => globalThis.terminal.system.capturePage(filePath), resolve(receiptDirectory, `${route}.png`));
     }
     if (globalThis.process.env.UI_RECEIPT_ID === 'UIR-003' && ['浏览与收集', '素材库', '发布包', '账号', '任务', '设置'].includes(route)) {
       await page.evaluate((filePath) => globalThis.terminal.system.capturePage(filePath), resolve(receiptDirectory, `${route}.png`));
     }
-    if (['BIZ-002', 'BIZ-003', 'BIZ-004', 'BIZ-006'].includes(globalThis.process.env.UI_RECEIPT_ID ?? '') && route === '经营') {
-      await page.evaluate((filePath) => globalThis.terminal.system.capturePage(filePath), resolve(receiptDirectory, '经营.png'));
+    if (['BIZ-002', 'BIZ-003', 'BIZ-004', 'BIZ-006'].includes(globalThis.process.env.UI_RECEIPT_ID ?? '') && route === '情报') {
+      await page.evaluate((filePath) => globalThis.terminal.system.capturePage(filePath), resolve(receiptDirectory, '情报.png'));
     }
-    if (globalThis.process.env.UI_RECEIPT_ID === 'BIZ-003' && route === '经营') {
-      await page.getByRole('tab', { name: '客户与成交' }).click();
+    if (globalThis.process.env.UI_RECEIPT_ID === 'BIZ-003' && route === '情报') {
+      await page.getByRole('tab', { name: '可选经营记录' }).click();
       await page.getByText('记录成交结果', { exact: true }).click();
       await page.getByText('记录帖子表现', { exact: true }).click();
       for (const label of ['成交客户', '成交结果', '表现所属内容']) {
-        if (!await page.getByRole('combobox', { name: label }).count()) throw new Error(`经营页缺少 ${label} 入口`);
+        if (!await page.getByRole('combobox', { name: label }).count()) throw new Error(`情报页可选经营区缺少 ${label} 入口`);
       }
-      if (!await page.getByRole('button', { name: '保存手工观察' }).count()) throw new Error('经营页缺少帖子表现保存入口');
+      if (!await page.getByRole('button', { name: '保存手工观察' }).count()) throw new Error('情报页可选经营区缺少帖子表现保存入口');
     }
   }
   if (globalThis.process.env.UI_RECEIPT_ID === 'UIR-004') {

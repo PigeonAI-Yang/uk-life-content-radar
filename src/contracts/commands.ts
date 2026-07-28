@@ -192,6 +192,7 @@ export const commandSchemas = {
   }).strict(),
   'intelligence.get': id,
   'intelligence.list': z.object({ status: z.string().optional(), limit: z.number().int().min(1).max(100).default(25) }).strict(),
+  'intelligence.scan_status': z.object({}).strict(),
   'intelligence.promote_resource': z.object({
     ...idempotent, candidateId: z.string().min(1)
   }).strict(),

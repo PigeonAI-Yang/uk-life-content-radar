@@ -187,6 +187,7 @@ export class CommandDispatcher {
     if (command === 'intelligence.list') {
       return this.intelligence.listCandidates(input.status ? String(input.status) : undefined, Number(input.limit));
     }
+    if (command === 'intelligence.scan_status') return this.intelligence.latestScan();
     if (command === 'intelligence.promote_resource') {
       return this.runIdempotent(command, input, () => {
         const candidate = this.intelligence.getCandidate(String(input.candidateId));
@@ -197,6 +198,7 @@ export class CommandDispatcher {
           targetAudience: candidate.audience,
           tags: ['资讯候选']
         });
+        if (candidate.promotedContentId) this.core.linkResource(candidate.promotedContentId, resource.id);
         return { candidate: this.intelligence.markPromoted(candidate.id, 'resource', resource.id), resource };
       });
     }
@@ -204,6 +206,7 @@ export class CommandDispatcher {
       return this.runIdempotent(command, input, () => {
         const candidate = this.intelligence.getCandidate(String(input.candidateId));
         const content = this.core.createContent({ accountId: input.accountId, title: candidate.title });
+        if (candidate.promotedResourceId) this.core.linkResource(content.id, candidate.promotedResourceId);
         return { candidate: this.intelligence.markPromoted(candidate.id, 'content', content.id), content };
       });
     }

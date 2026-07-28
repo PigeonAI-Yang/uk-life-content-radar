@@ -12,9 +12,9 @@ writeFileSync(resolve(receiptDirectory, 'test.log'), `${run.stdout}${run.stderr}
 const result = {
   task: 'BIZ-006', status: run.status === 0 ? 'completed' : 'partial',
   commands: ['intelligence.record_scan', 'intelligence.get', 'intelligence.list',
-    'intelligence.promote_resource', 'intelligence.promote_content'],
+    'intelligence.scan_status', 'intelligence.promote_resource', 'intelligence.promote_content'],
   databaseObjects: ['tasks', 'intelligence_scan_sources', 'intelligence_candidates'],
-  failureExperiments: ['one failed source keeps scan partial', 'old discoveredAt is preserved'],
+  failureExperiments: ['one failed source keeps scan partial', 'old discoveredAt is preserved', 'latest scan exposes failed source and last success'],
   exitCode: run.status
 };
 writeFileSync(resolve(receiptDirectory, 'result.json'), JSON.stringify(result, null, 2));

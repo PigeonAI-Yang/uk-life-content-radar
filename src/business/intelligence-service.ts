@@ -83,15 +83,27 @@ export class IntelligenceService {
     return { items: (rows as { id: string }[]).map((row) => this.getCandidate(row.id)) };
   }
 
+  latestScan() {
+    const row = this.database.prepare(
+      "SELECT id FROM tasks WHERE type='intelligence.scan' ORDER BY updated_at DESC, id DESC LIMIT 1"
+    ).get() as { id: string } | undefined;
+    if (!row) return { latest: null };
+    return { latest: this.getScan(row.id) };
+  }
+
   markPromoted(candidateId: string, field: 'resource' | 'content', objectId: string) {
     const candidate = this.getCandidate(candidateId);
-    if (candidate.status !== 'candidate') {
-      throw new BusinessError('INVALID_INPUT', '该候选已经进入创作流程', '读取已有资料或内容', candidateId);
+    const existingId = field === 'resource' ? candidate.promotedResourceId : candidate.promotedContentId;
+    if (existingId) {
+      throw new BusinessError('INVALID_INPUT', `该候选已经生成${field === 'resource' ? '资料' : '内容'}`, '读取已有对象', candidateId);
     }
+    const status = field === 'resource'
+      ? candidate.promotedContentId ? 'resource_and_content' : 'resource'
+      : candidate.promotedResourceId ? 'resource_and_content' : 'content';
     this.database.prepare(`
       UPDATE intelligence_candidates SET status=?, ${field === 'resource' ? 'promoted_resource_id' : 'promoted_content_id'}=?, updated_at=?
-      WHERE id=? AND status='candidate'
-    `).run(field === 'resource' ? 'resource' : 'content', objectId, new Date().toISOString(), candidateId);
+      WHERE id=?
+    `).run(status, objectId, new Date().toISOString(), candidateId);
     return this.getCandidate(candidateId);
   }
 }

@@ -56,7 +56,7 @@ try {
   });
   if (!proposal.ok) throw new Error(`提案创建失败: ${JSON.stringify(proposal)}`);
 
-  await page.getByRole('button', { name: '经营' }).click();
+  await page.getByRole('button', { name: '情报' }).click();
   await page.getByRole('button', { name: '批准为正式策略' }).click();
   await page.getByText(/策略已批准，Pi 接力任务/).waitFor();
   const tasks = await dispatch('task.list', { query: 'agent.execute', limit: 5 });

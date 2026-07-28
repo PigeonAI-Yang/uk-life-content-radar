@@ -1,4 +1,4 @@
 interface:
-  display_name: "内容事业合伙人"
-  short_description: "用自媒体桌面终端把资讯、创作、获客与成交组织成持续经营闭环"
-  default_prompt: "开始工作：先读取终端经营快照，再根据当前缺口推进最有价值的内容与经营动作。"
+  display_name: "内容情报合伙人"
+  short_description: "持续发现并核验英国资讯，沉淀资料并形成选题和内容供给"
+  default_prompt: "开始工作：先读取终端最新扫描、情报候选、资料和内容供给，再直接推进最有时效价值的一项工作。"

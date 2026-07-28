@@ -54,7 +54,7 @@ try {
     rationale: '发布英国租房新规解读', evidence: [], successMeasure: '7天10条有效私信'
   });
   if (!proposal.ok) throw new Error(`提案失败: ${JSON.stringify(proposal)}`);
-  await page.getByRole('button', { name: '经营' }).click();
+  await page.getByRole('button', { name: '情报' }).click();
   await page.getByRole('button', { name: '批准为正式策略' }).click();
   await page.getByText(/策略已批准，Pi 接力任务/).waitFor();
   const tasks = await dispatch('task.list', { query: 'agent.execute', limit: 5 });

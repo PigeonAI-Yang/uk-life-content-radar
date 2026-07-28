@@ -15,7 +15,9 @@ const sha256 = (file) => createHash('sha256').update(readFileSync(file)).digest(
 const mismatches = files.filter((file) => sha256(resolve(source, file)) !== sha256(resolve(installed, file)));
 const body = readFileSync(resolve(source, 'SKILL.md'), 'utf8');
 const assertions = {
-  startsWithSnapshot: body.includes('business.snapshot'),
+  startsWithIntelligence: body.includes('调用 `intelligence.scan_status`、`intelligence.list`'),
+  businessIsOptional: body.includes('不把空的经营数据当作开工阻塞'),
+  publishingIsDownstream: body.includes('发布包、私信、客户和成交是可选下游'),
   terminalUnavailableStopsSavedClaim: body.includes('终端未连接，本次结果尚未保存'),
   conversationIsNotMemory: body.includes('聊天上下文不是正式记忆'),
   strategyApprovalIsHumanOnly: body.includes('只有用户在终端界面批准后才是正式策略'),

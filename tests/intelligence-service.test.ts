@@ -4,6 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { AppDatabase } from '../src/storage/database';
 import { IntelligenceService } from '../src/business/intelligence-service';
+import { CommandDispatcher } from '../src/business/dispatcher';
+import type { BrowserManager } from '../src/main/browser-manager';
 
 const temporaryPaths: string[] = [];
 afterEach(() => {
@@ -38,6 +40,52 @@ describe('资讯扫描与候选', () => {
     const candidate = service.listCandidates('candidate', 10).items[0];
     expect(candidate.discoveredAt).toBe(yesterday);
     expect(candidate.status).toBe('candidate');
+    expect(service.latestScan().latest).toMatchObject({
+      id: scan.id,
+      status: 'partial',
+      sources: expect.arrayContaining([
+        expect.objectContaining({ source_name: 'GOV.UK', status: 'succeeded' }),
+        expect.objectContaining({ source_name: '社区线索', status: 'failed', last_success_at: yesterday })
+      ])
+    });
+    database.close();
+  });
+
+  test('同一情报可分别沉淀为资料和内容', async () => {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'content-terminal-intelligence-flow-'));
+    temporaryPaths.push(temporary);
+    const database = new AppDatabase();
+    const rootPath = path.join(temporary, 'root');
+    const settings = database.initialize(rootPath, path.join(temporary, 'profile', 'root.json'));
+    const dispatcher = new CommandDispatcher(database.getConnection(settings.databasePath), rootPath, {} as BrowserManager);
+    const account = await dispatcher.dispatch('account.create', {
+      caller: 'test', idempotencyKey: 'account', name: '情报号', positioning: '英国生活',
+      audience: '在英华人', tone: '自然'
+    });
+    if (!account.ok) throw new Error(account.error.message);
+    const scan = await dispatcher.dispatch('intelligence.record_scan', {
+      caller: 'test', idempotencyKey: 'scan', startedAt: new Date().toISOString(), endedAt: new Date().toISOString(),
+      sources: [{ name: 'GOV.UK', status: 'succeeded', itemCount: 1 }],
+      candidates: [{
+        title: '租房新规', sourceUrl: 'https://www.gov.uk/example', audience: '在英租客',
+        impact: '需要核对租约', timeliness: '本周', verificationStatus: '已核验',
+        angles: ['租客须知'], discoveredAt: new Date().toISOString()
+      }]
+    });
+    if (!scan.ok) throw new Error(scan.error.message);
+    const candidateId = (scan.result as { candidates: { id: string }[] }).candidates[0].id;
+    const resource = await dispatcher.dispatch('intelligence.promote_resource', {
+      caller: 'test', idempotencyKey: 'resource', candidateId
+    });
+    const content = await dispatcher.dispatch('intelligence.promote_content', {
+      caller: 'test', idempotencyKey: 'content', candidateId,
+      accountId: (account.result as { id: string }).id
+    });
+    expect(resource.ok).toBe(true);
+    expect(content.ok).toBe(true);
+    if (content.ok) expect(content.result).toMatchObject({
+      candidate: { status: 'resource_and_content' }
+    });
     database.close();
   });
 });

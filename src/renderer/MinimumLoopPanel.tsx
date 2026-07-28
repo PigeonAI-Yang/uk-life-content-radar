@@ -8,8 +8,9 @@ export function MinimumLoopPanel() {
   const [result, setResult] = useState('');
   const [dashboard, setDashboard] = useState<{
     continueCreating: { id: string; title: string }[];
+    intelligence: { id: string; title: string }[];
+    scanStatus: string;
     pending: { id: string; type: string; status: string }[];
-    awaitingReview: { id: string; platform: string }[];
     failures: { id: string; type: string; status: string }[];
   }>();
   const statusNames: Record<string, string> = {
@@ -20,21 +21,24 @@ export function MinimumLoopPanel() {
 
   const refreshDashboard = async () => {
     const dispatch = window.terminal.business.dispatch;
-    const [accounts, tasks, candidates] = await Promise.all([
+    const [accounts, tasks, intelligence, scan] = await Promise.all([
       dispatch('account.search', { query: '', limit: 25 }),
       dispatch('task.list', { query: '', limit: 25 }),
-      dispatch('package.list_candidates', { query: '', limit: 100 })
+      dispatch('intelligence.list', { status: 'candidate', limit: 25 }),
+      dispatch('intelligence.scan_status', {})
     ]);
-    const failed = [accounts, tasks, candidates].find((response) => !response.ok);
+    const failed = [accounts, tasks, intelligence, scan].find((response) => !response.ok);
     if (failed && !failed.ok) return setResult(`${failed.error.code}: ${failed.error.message}`);
     const accountItems = accounts.ok ? (accounts.result as { items: { id: string }[] }).items : [];
     const accountDetails = await Promise.all(accountItems.map((account) => dispatch('account.get', { id: account.id })));
     const taskItems = tasks.ok ? (tasks.result as { items: { id: string; type: string; status: string }[] }).items : [];
-    const candidateItems = candidates.ok ? (candidates.result as { items: { id: string; platform: string; status: string }[] }).items : [];
+    const intelligenceItems = intelligence.ok ? (intelligence.result as { items: { id: string; title: string }[] }).items : [];
+    const latestScan = scan.ok ? (scan.result as { latest: { status: string } | null }).latest : null;
     setDashboard({
       continueCreating: accountDetails.flatMap((response) => response.ok ? (response.result as { usage: { contents: { id: string; title: string }[] } }).usage.contents : []),
+      intelligence: intelligenceItems,
+      scanStatus: latestScan?.status ?? 'not_started',
       pending: taskItems.filter((task) => ['queued', 'running'].includes(task.status)),
-      awaitingReview: candidateItems.filter((candidate) => candidate.status === 'approval_pending'),
       failures: taskItems.filter((task) => ['failed', 'partial', 'interrupted', 'cancelled'].includes(task.status))
     });
   };
@@ -44,16 +48,19 @@ export function MinimumLoopPanel() {
     void Promise.all([
       dispatch('account.search', { query: '', limit: 25 }),
       dispatch('task.list', { query: '', limit: 25 }),
-      dispatch('package.list_candidates', { query: '', limit: 100 })
-    ]).then(async ([accounts, tasks, candidates]) => {
-      if (!accounts.ok || !tasks.ok || !candidates.ok) return;
+      dispatch('intelligence.list', { status: 'candidate', limit: 25 }),
+      dispatch('intelligence.scan_status', {})
+    ]).then(async ([accounts, tasks, intelligence, scan]) => {
+      if (!accounts.ok || !tasks.ok || !intelligence.ok || !scan.ok) return;
       const accountDetails = await Promise.all((accounts.result as { items: { id: string }[] }).items.map((account) => dispatch('account.get', { id: account.id })));
       const taskItems = (tasks.result as { items: { id: string; type: string; status: string }[] }).items;
-      const candidateItems = (candidates.result as { items: { id: string; platform: string; status: string }[] }).items;
+      const intelligenceItems = (intelligence.result as { items: { id: string; title: string }[] }).items;
+      const latestScan = (scan.result as { latest: { status: string } | null }).latest;
       setDashboard({
         continueCreating: accountDetails.flatMap((response) => response.ok ? (response.result as { usage: { contents: { id: string; title: string }[] } }).usage.contents : []),
+        intelligence: intelligenceItems,
+        scanStatus: latestScan?.status ?? 'not_started',
         pending: taskItems.filter((task) => ['queued', 'running'].includes(task.status)),
-        awaitingReview: candidateItems.filter((candidate) => candidate.status === 'approval_pending'),
         failures: taskItems.filter((task) => ['failed', 'partial', 'interrupted', 'cancelled'].includes(task.status))
       });
     });
@@ -90,10 +97,10 @@ export function MinimumLoopPanel() {
       <div className="panel-heading"><div><h2>今天从这里继续</h2><p>数据来自本地业务根目录和真实任务状态</p></div><Button onClick={refreshDashboard}>刷新状态</Button></div>
       {dashboard && <>
         <div className="dashboard-metrics">
+          <article><span>待处理情报</span><strong>{dashboard.intelligence.length}</strong><small>{dashboard.intelligence[0]?.title ?? '暂无候选'}</small></article>
+          <article><span>扫描状态</span><strong>{dashboard.scanStatus === 'succeeded' ? '正常' : dashboard.scanStatus === 'partial' ? '部分成功' : dashboard.scanStatus === 'failed' ? '失败' : '未运行'}</strong><small>成功与失败来源均保留</small></article>
           <article><span>待继续内容</span><strong>{dashboard.continueCreating.length}</strong><small>{dashboard.continueCreating[0]?.title ?? '暂无内容'}</small></article>
           <article><span>待处理任务</span><strong>{dashboard.pending.length}</strong><small>{dashboard.pending[0] ? taskText(dashboard.pending[0]) : '没有运行中任务'}</small></article>
-          <article><span>待人工审批</span><strong>{dashboard.awaitingReview.length}</strong><small>{dashboard.awaitingReview[0]?.platform ?? '没有待审批版本'}</small></article>
-          <article><span>需要处理</span><strong>{dashboard.failures.length}</strong><small>{dashboard.failures[0] ? taskText(dashboard.failures[0]) : '没有失败项'}</small></article>
         </div>
         <div className="dashboard-columns">
           <div><h3>最近工作</h3>
@@ -103,8 +110,8 @@ export function MinimumLoopPanel() {
           </div>
           <aside><h3>下一步</h3>
             <div className="compact-list">
+              <div><strong>处理情报候选</strong><span>{dashboard.intelligence.length} 条待判断</span></div>
               <div><strong>继续编辑内容</strong><span>{dashboard.continueCreating.length} 篇可继续</span></div>
-              <div><strong>处理待审批版本</strong><span>{dashboard.awaitingReview.length} 个平台版本</span></div>
               <div><strong>检查失败任务</strong><span>{dashboard.failures.length} 项需要处理</span></div>
             </div>
           </aside>

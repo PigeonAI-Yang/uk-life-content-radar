@@ -22,18 +22,24 @@ type Lead = {
 type IntelligenceCandidate = {
   id: string; title: string; audience: string; impact: string; timeliness: string;
   verificationStatus: string; discoveredAt: string; publishBefore: string | null; status: string;
+  sourceUrl: string; angles: string[]; promotedResourceId: string | null; promotedContentId: string | null;
+};
+type ScanStatus = {
+  id: string; status: string; updatedAt: string;
+  sources: { id: string; source_name: string; status: string; item_count: number; error: string | null; last_success_at: string | null }[];
 };
 type ContentItem = { id: string; title: string };
 type Deal = { id: string; nickname: string; outcome: string; amount_minor: number | null; currency: string; reason: string };
 
 export function BusinessPanel() {
-  const [activeSection, setActiveSection] = useState<'today' | 'customers' | 'content' | 'product'>('today');
+  const [activeSection, setActiveSection] = useState<'today' | 'customers' | 'content' | 'product'>('content');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountId, setAccountId] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [candidates, setCandidates] = useState<IntelligenceCandidate[]>([]);
+  const [scan, setScan] = useState<ScanStatus | null>(null);
   const [contents, setContents] = useState<ContentItem[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [message, setMessage] = useState('');
@@ -51,11 +57,12 @@ export function BusinessPanel() {
 
   const load = async (selected: string) => {
     if (!selected) return;
-    const [productResult, strategyResult, leadResult, intelligenceResult, contentResult, dealResult] = await Promise.all([
+    const [productResult, strategyResult, leadResult, intelligenceResult, scanResult, contentResult, dealResult] = await Promise.all([
       window.terminal.business.dispatch('product.list', { accountId: selected }),
       window.terminal.business.dispatch('strategy.list', { accountId: selected }),
       window.terminal.business.dispatch('lead.list', { accountId: selected }),
       window.terminal.business.dispatch('intelligence.list', { limit: 25 }),
+      window.terminal.business.dispatch('intelligence.scan_status', {}),
       window.terminal.business.dispatch('search.query', {
         query: '', types: ['content'], accountId: selected, includeArchived: true, limit: 100
       }),
@@ -65,6 +72,7 @@ export function BusinessPanel() {
     if (strategyResult.ok) setProposals((strategyResult.result as { items: Proposal[] }).items);
     if (leadResult.ok) setLeads((leadResult.result as { items: Lead[] }).items);
     if (intelligenceResult.ok) setCandidates((intelligenceResult.result as { items: IntelligenceCandidate[] }).items);
+    if (scanResult.ok) setScan((scanResult.result as { latest: ScanStatus | null }).latest);
     if (contentResult.ok) setContents((contentResult.result as { items: ContentItem[] }).items);
     if (dealResult.ok) setDeals((dealResult.result as { items: Deal[] }).items);
   };
@@ -210,31 +218,29 @@ export function BusinessPanel() {
     negotiating: '洽谈中', won: '已成交', lost: '未成交'
   };
   const today = new Date().toISOString().slice(0, 10);
-  const due = leads.filter((item) => item.nextFollowUpAt?.slice(0, 10) === today);
-
   return <section className="business-workspace">
     <div className="account-toolbar">
-      <Select aria-label="经营账号" value={accountId} onChange={(event) => {
+      <Select aria-label="情报账号" value={accountId} onChange={(event) => {
         setAccountId(event.target.value); void load(event.target.value);
       }}>
         <option value="">选择账号</option>
         {accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
       </Select>
-      <span>{accountId ? '经营资料只写入当前账号' : '请先在“账号”中建立账号'}</span>
+      <span>{accountId ? '情报转化后的内容写入当前账号；资料仍可跨账号复用' : '请先在“账号”中建立账号'}</span>
     </div>
     {message && <MessageBar><MessageBarBody>{message}</MessageBarBody></MessageBar>}
     <div className="dashboard-metrics">
-      <article><span>当前产品</span><strong>{products.length}</strong></article>
-      <article><span>待批准建议</span><strong>{proposals.filter((item) => item.status === 'pending').length}</strong></article>
-      <article><span>洽谈中的客户</span><strong>{leads.filter((item) => item.stage === 'negotiating').length}</strong></article>
-      <article><span>今天要跟进</span><strong>{due.length}</strong></article>
+      <article><span>今日发现</span><strong>{candidates.filter((item) => item.discoveredAt.slice(0, 10) === today).length}</strong></article>
+      <article><span>待沉淀情报</span><strong>{candidates.filter((item) => item.status === 'candidate').length}</strong></article>
+      <article><span>内容供给</span><strong>{contents.length}</strong></article>
+      <article><span>运行中任务</span><strong>{proposals.filter((item) => item.status === 'pending').length}</strong></article>
     </div>
-    <div className="business-tabs" role="tablist" aria-label="经营工作区">
+    <div className="business-tabs" role="tablist" aria-label="情报工作区">
       {([
-        ['today', '今日待办'],
-        ['customers', '客户与成交'],
-        ['content', '内容机会'],
-        ['product', '产品设置']
+        ['content', '今日情报'],
+        ['today', '人工决策'],
+        ['product', '内容方向'],
+        ['customers', '可选经营记录']
       ] as const).map(([key, label]) =>
         <Button key={key} role="tab" aria-selected={activeSection === key}
           appearance="subtle" onClick={() => setActiveSection(key)}>{label}</Button>)}
@@ -262,18 +268,28 @@ export function BusinessPanel() {
         </article>)}
       </section>}
       {activeSection === 'content' && <section className="business-section">
-        <h2>资讯候选</h2>
-        {!candidates.length && <p className="empty-copy">还没有扫描候选。后台扫描只收集和整理，不会替你决定选题。</p>}
+        <div className="business-section-heading"><div><h2>今日情报</h2><p>先看影响、时效和核验状态，再决定沉淀为资料还是建立内容。</p></div></div>
+        <article className="business-card">
+          <strong>{scan ? scan.status === 'succeeded' ? '最近扫描完成' : scan.status === 'partial' ? '最近扫描部分成功' : '最近扫描失败' : '尚未运行扫描'}</strong>
+          <span>{scan ? `更新时间：${new Date(scan.updatedAt).toLocaleString()}` : '运行情报任务后将在这里显示来源状态'}</span>
+          {scan?.sources.map((source) => <div key={source.id}>
+            <span>{source.source_name} · {source.status === 'succeeded' ? `成功 ${source.item_count} 条` : `失败：${source.error ?? '未返回错误'}`}</span>
+            {source.last_success_at && <small>最后成功：{new Date(source.last_success_at).toLocaleString()}</small>}
+          </div>)}
+        </article>
+        {!candidates.length && <p className="empty-copy">还没有情报候选。启动扫描后，成功来源和失败来源都应留下真实状态。</p>}
         {candidates.map((item) => {
           const isToday = item.discoveredAt.slice(0, 10) === today;
           return <article className="business-card" key={item.id}>
             <strong>{item.title}</strong>
             <span>{isToday ? '今天发现' : `历史候选（${item.discoveredAt.slice(0, 10)}）`} · {item.verificationStatus}</span>
             <p>{item.impact}</p><span>影响人群：{item.audience} · 时效：{item.timeliness}</span>
+            <span>创作角度：{item.angles.join('；') || '待整理'}</span>
+            <small>{item.sourceUrl}</small>
             {item.publishBefore && <small>建议最晚处理：{item.publishBefore.slice(0, 10)}</small>}
-            {item.status === 'candidate' && <div>
-              <Button onClick={() => promoteCandidate(item, 'resource')}>存入资料库</Button>
-              <Button onClick={() => promoteCandidate(item, 'content')}>建立内容项目</Button>
+            {(!item.promotedResourceId || !item.promotedContentId) && <div>
+              {!item.promotedResourceId && <Button onClick={() => promoteCandidate(item, 'resource')}>存入资料库</Button>}
+              {!item.promotedContentId && <Button onClick={() => promoteCandidate(item, 'content')}>建立内容项目</Button>}
             </div>}
           </article>;
         })}

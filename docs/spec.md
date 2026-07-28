@@ -230,11 +230,11 @@ src/
 3. 小红书、抖音、微信公众号当前图文尺寸、字数与预览模板来源。
 4. 微信公众号长文预览采用的最低可复制格式。
 
-## 15. 内容事业合伙人扩展
+## 15. 内容情报工作台扩展
 
 ### 15.1 单体边界
 
-内容生意工作台继续复用现有 Electron（桌面应用框架）单体、唯一业务分发器、唯一 better-sqlite3（同步数据库驱动）连接、用户业务根目录和 Windows Named Pipe（微软系统命名管道）。不增加 CRM（客户关系管理系统）服务、OCR（光学字符识别）服务、HTTP（超文本传输协议）服务或新状态管理库。
+内容情报工作台继续复用现有 Electron（桌面应用框架）单体、唯一业务分发器、唯一 better-sqlite3（同步数据库驱动）连接、用户业务根目录和 Windows Named Pipe（微软系统命名管道）。第一版优先完成情报发现、核验、沉淀资料与形成内容供给；发布和经营记录只是可选下游。不增加 CRM（客户关系管理系统）服务、OCR（光学字符识别）服务、HTTP（超文本传输协议）服务或新状态管理库。
 
 截图理解由外部 Codex（代码智能体）完成；应用只负责接收原始文件路径、经过 Zod（结构校验库）验证的提取结果、用户确认状态和对象关系。
 
@@ -268,7 +268,13 @@ intelligence/<candidate-id>/candidate.json
 
 ### 15.4 统一命令
 
-首批命令：
+情报主链命令：
+
+- `intelligence.record_scan|get|list|scan_status|promote_resource|promote_content`
+- `resource.get`
+- `content.get`
+
+既有可选经营命令：
 
 - `product.create|get|update|list`
 - `strategy.propose|get|list|approve`
@@ -277,20 +283,21 @@ intelligence/<candidate-id>/candidate.json
 - `deal.record|get|list`
 - `post_metrics.record|list`
 - `business.snapshot`
-- `intelligence.create_candidate|get|list`
 
 创建、导入和记录命令接受调用方与幂等键；更新命令使用期望版本。`strategy.approve` 与 `approval.approve` 一样只允许人类界面调用，MCP（模型上下文协议）注册时排除。
 
-### 15.5 经营快照
+### 15.5 跨会话快照
 
-`business.snapshot` 是跨会话恢复查询，返回：
+`business.snapshot` 是兼容既有经营对象的跨会话查询；情报首页与 Agent 开工优先读取 `intelligence.scan_status`、`intelligence.list`、资料、内容与任务。客户、成交、策略和发布批准没有真实数据时保持为空，不阻塞情报主链。
+
+`business.snapshot` 返回：
 
 - 当前产品和经批准策略；
 - 最近内容与资讯候选；
 - 各阶段客户数量和需要跟进的客户；
 - 最近成交与未成交原因；
 - 待确认沟通材料；
-- 待批准策略提案和发布包；
+- 待批准策略提案和发布包（如有）；
 - 最后成功扫描时间、失败来源和明确数据缺口。
 
 快照只汇总真实对象，不让模型生成的文字代替数据库事实。
