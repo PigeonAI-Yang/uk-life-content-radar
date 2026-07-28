@@ -10,7 +10,9 @@ describe('Pi MCP 连接失败', () => {
       executablePath: process.execPath,
       helperPath: path.resolve('missing-mcp-helper.cjs'),
       discoveryPath: path.resolve('missing-discovery.json'),
-      skillPath: path.resolve('skills', 'content-business-partner', 'SKILL.md')
+      skillPath: path.resolve('skills', 'content-business-partner', 'SKILL.md'),
+      radarSkillPath: path.resolve('SKILL.md'),
+      sourceMapPath: path.resolve('references', 'source-map.md')
     });
     await expect(executor.execute({
       taskId: 'missing-mcp',

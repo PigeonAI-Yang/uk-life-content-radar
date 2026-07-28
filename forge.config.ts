@@ -15,6 +15,8 @@ const config: ForgeConfig = {
     extraResource: [
       'build/mcp-helper.cjs',
       'skills/content-business-partner',
+      'SKILL.md',
+      'references/source-map.md',
       'node_modules/@img/sharp-win32-x64/lib/libvips-42.dll',
       'node_modules/@img/sharp-win32-x64/lib/libvips-cpp-8.18.3.dll'
     ]

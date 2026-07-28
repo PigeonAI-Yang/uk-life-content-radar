@@ -87,6 +87,12 @@ void app.whenReady().then(() => {
       skillPath: app.isPackaged
         ? path.join(process.resourcesPath, 'content-business-partner', 'SKILL.md')
         : path.resolve('skills', 'content-business-partner', 'SKILL.md'),
+      radarSkillPath: app.isPackaged
+        ? path.join(process.resourcesPath, 'SKILL.md')
+        : path.resolve('SKILL.md'),
+      sourceMapPath: app.isPackaged
+        ? path.join(process.resourcesPath, 'source-map.md')
+        : path.resolve('references', 'source-map.md'),
       customApiProvider: () => {
         const config = customApiStore.read();
         return config && apiKeyStore.isConfigured() ? { ...config, apiKey: apiKeyStore.load() } : undefined;

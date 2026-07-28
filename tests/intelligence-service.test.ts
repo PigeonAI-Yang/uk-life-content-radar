@@ -13,6 +13,21 @@ afterEach(() => {
 });
 
 describe('资讯扫描与候选', () => {
+  test('网页来源不得伪造终端资料标识', () => {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'content-terminal-intelligence-source-'));
+    temporaryPaths.push(temporary);
+    const database = new AppDatabase();
+    const rootPath = path.join(temporary, 'root');
+    const settings = database.initialize(rootPath, path.join(temporary, 'profile', 'root.json'));
+    const service = new IntelligenceService(database.getConnection(settings.databasePath));
+    expect(() => service.recordScan({
+      caller: 'test', startedAt: new Date().toISOString(), endedAt: new Date().toISOString(),
+      sources: [{ name: 'Ofgem', sourceId: 'ofgem', status: 'succeeded', itemCount: 1 }],
+      candidates: []
+    })).toThrow('sourceId 只能引用终端中已有的资料对象');
+    database.close();
+  });
+
   test('部分来源失败保持 partial，历史候选保留真实发现时间', () => {
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'content-terminal-intelligence-'));
     temporaryPaths.push(temporary);

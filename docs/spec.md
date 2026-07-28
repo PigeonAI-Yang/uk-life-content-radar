@@ -312,6 +312,8 @@ intelligence/<candidate-id>/candidate.json
 
 Pi 只能通过现有 MCP stdio helper、Windows Named Pipe（微软系统命名管道）和 `CommandDispatcher` 调用业务能力。Pi Runner 不持有业务数据库连接，不直接写业务根目录。MCP 继续排除 `strategy.approve` 与 `approval.approve`。
 
+情报发现额外提供 `web_search` 与 `web_read` 两个只读工具。`web_read` 只允许读取本次 `web_search` 返回的 HTTP(S) 地址；搜索摘要只用于发现，候选必须打开原文核验后才能通过 `intelligence.record_scan` 写入。
+
 ### 16.3 认证顺序
 
 认证发现顺序为已保存的自定义兼容 API、本机 CockpitTools 聚合服务、Pi 自身 ChatGPT Plus/Pro 登录、本机 Codex（代码智能体）登录、Pi 官方 OAuth（开放授权）或设备码登录。检测到凭据文件只表示候选存在；只有真实模型连接成功才能标记有效。

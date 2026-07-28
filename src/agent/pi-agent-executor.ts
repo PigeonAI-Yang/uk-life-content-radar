@@ -7,6 +7,7 @@ import type { CustomApiConfig } from './auth-service';
 import { Type } from 'typebox';
 import { BusinessError } from '../contracts/errors';
 import type { AgentExecutionRequest, AgentExecutionResult, AgentExecutor } from './agent-executor';
+import { WebResearch } from './web-research';
 
 type PiAgentOptions = {
   cwd: string;
@@ -15,6 +16,8 @@ type PiAgentOptions = {
   helperPath: string;
   discoveryPath: string;
   skillPath: string;
+  radarSkillPath: string;
+  sourceMapPath: string;
   customApiProvider?: () => (CustomApiConfig & { apiKey: string }) | undefined;
 };
 
@@ -41,6 +44,7 @@ export class PiAgentExecutor implements AgentExecutor {
     const client = new Client({ name: 'content-media-terminal-pi', version: '0.1.0' });
     let session: AgentSession | undefined;
     let toolCalls = 0;
+    const web = new WebResearch();
     const previousApiKey = process.env.CONTENT_TERMINAL_CUSTOM_API_KEY;
     try {
       const customApi = this.options.customApiProvider?.();
@@ -109,12 +113,39 @@ export class PiAgentExecutor implements AgentExecutor {
           };
         }
       });
+      const webSearch = defineTool({
+        name: 'web_search',
+        label: '网页搜索',
+        description: '搜索当前英国资讯。返回标题、原始地址和摘要；摘要只用于发现，核验前必须调用 web_read。',
+        parameters: Type.Object({
+          query: Type.String({ minLength: 2 }),
+          limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 10 }))
+        }),
+        execute: async (_toolCallId, input) => {
+          toolCalls += 1;
+          request.onEvent({ type: 'tool_call', name: 'web_search', at: new Date().toISOString() });
+          const result = await web.search(input.query, input.limit ?? 6);
+          return { content: [{ type: 'text' as const, text: JSON.stringify(result) }], details: { query: input.query } };
+        }
+      });
+      const webRead = defineTool({
+        name: 'web_read',
+        label: '读取网页',
+        description: '读取本次 web_search 返回的网页正文，用于核验日期、事实和适用人群。',
+        parameters: Type.Object({ url: Type.String() }),
+        execute: async (_toolCallId, input) => {
+          toolCalls += 1;
+          request.onEvent({ type: 'tool_call', name: 'web_read', at: new Date().toISOString() });
+          const result = await web.read(input.url);
+          return { content: [{ type: 'text' as const, text: JSON.stringify(result) }], details: { url: input.url } };
+        }
+      });
       const created = await createAgentSession({
         cwd: this.options.cwd,
         agentDir: this.options.agentDir,
         noTools: 'all',
-        tools: ['terminal_mcp'],
-        customTools: [terminalMcp],
+        tools: ['terminal_mcp', 'web_search', 'web_read'],
+        customTools: [terminalMcp, webSearch, webRead],
         modelRuntime,
         model
       });
@@ -127,17 +158,31 @@ export class PiAgentExecutor implements AgentExecutor {
         }
       });
       const skill = fs.readFileSync(path.resolve(this.options.skillPath), 'utf8');
+      const radarSkill = fs.readFileSync(path.resolve(this.options.radarSkillPath), 'utf8');
+      const sourceMap = fs.readFileSync(path.resolve(this.options.sourceMapPath), 'utf8');
       const prompt = [
         skill,
         '',
+        '## 英国生活内容雷达 Skill',
+        radarSkill,
+        '',
+        '## 英国资讯来源地图',
+        sourceMap,
+        '',
         '## 本次终端任务',
+        `当前时间：${new Date().toISOString()}`,
         `账号标识：${request.accountId}`,
         `触发事件：${request.triggerEvent}`,
         request.objectId ? `对象标识：${request.objectId}` : '',
         request.objectVersion === undefined ? '' : `对象版本：${request.objectVersion}`,
         `目标：${request.goal}`,
         '',
-        '只能使用 terminal_mcp 工具处理终端业务。完成写操作后必须读回。'
+        '使用 web_search 发现资讯后，必须用 web_read 打开原文核验。搜索摘要不能作为最终证据。',
+        `intelligence.record_scan 必须使用以下结构：
+{"caller":"pi","idempotencyKey":"每轮唯一值","startedAt":"ISO时间","endedAt":"ISO时间","sources":[{"name":"来源名","status":"succeeded或failed","itemCount":0,"error":"失败时填写","lastSuccessAt":"可选ISO时间"}],"candidates":[{"title":"标题","sourceUrl":"原文URL","audience":"影响人群","impact":"影响","timeliness":"时效","verificationStatus":"核验状态","angles":["角度"],"discoveredAt":"ISO时间"}]}`,
+        '先完成本轮全部搜索和核验，再记录扫描。最终只能有一条成功持久化的扫描；若参数校验明确表示未写入，可以修正参数后重试。',
+        '网页发现的 sources 和 candidates 必须省略 sourceId；sourceId 只允许填写通过终端读取到的真实资料对象标识。',
+        '所有终端写入只能使用 terminal_mcp；完成写操作后必须立即读回。'
       ].filter(Boolean).join('\n');
       await session.prompt(prompt);
       await session.waitForIdle();

@@ -10,6 +10,11 @@ export class IntelligenceService {
   recordScan(input: Record<string, unknown>) {
     const sources = input.sources as Record<string, unknown>[];
     const candidates = input.candidates as Record<string, unknown>[];
+    for (const item of [...sources, ...candidates]) {
+      if (item.sourceId && !this.database.prepare('SELECT 1 FROM sources WHERE id=?').get(item.sourceId)) {
+        throw new BusinessError('INVALID_INPUT', 'sourceId 只能引用终端中已有的资料对象', '网页发现的来源请省略 sourceId');
+      }
+    }
     const id = randomUUID();
     const now = new Date().toISOString();
     const failed = sources.filter((source) => source.status === 'failed');
