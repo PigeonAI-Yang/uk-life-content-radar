@@ -22,6 +22,8 @@ type IntelligenceCandidate = {
   id: string; title: string; audience: string; impact: string; timeliness: string;
   verificationStatus: string; discoveredAt: string; publishBefore: string | null; status: string;
 };
+type ContentItem = { id: string; title: string };
+type Deal = { id: string; nickname: string; outcome: string; amount_minor: number | null; currency: string; reason: string };
 
 export function BusinessPanel() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -30,6 +32,8 @@ export function BusinessPanel() {
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [candidates, setCandidates] = useState<IntelligenceCandidate[]>([]);
+  const [contents, setContents] = useState<ContentItem[]>([]);
+  const [deals, setDeals] = useState<Deal[]>([]);
   const [message, setMessage] = useState('');
   const [product, setProduct] = useState({
     name: '', targetCustomer: '', problem: '', priceRange: '', serviceScope: '',
@@ -39,19 +43,27 @@ export function BusinessPanel() {
   const [successMeasure, setSuccessMeasure] = useState('');
   const [lead, setLead] = useState({ nickname: '', coreNeed: '', intent: '', nextAction: '' });
   const [conversation, setConversation] = useState({ leadId: '', text: '', summary: '' });
+  const [deal, setDeal] = useState({ leadId: '', outcome: 'won', amount: '', reason: '', contentInsight: '' });
+  const [metrics, setMetrics] = useState({ contentId: '', views: '', likes: '', saves: '', comments: '', messages: '' });
 
   const load = async (selected: string) => {
     if (!selected) return;
-    const [productResult, strategyResult, leadResult, intelligenceResult] = await Promise.all([
+    const [productResult, strategyResult, leadResult, intelligenceResult, contentResult, dealResult] = await Promise.all([
       window.terminal.business.dispatch('product.list', { accountId: selected }),
       window.terminal.business.dispatch('strategy.list', { accountId: selected }),
       window.terminal.business.dispatch('lead.list', { accountId: selected }),
-      window.terminal.business.dispatch('intelligence.list', { limit: 25 })
+      window.terminal.business.dispatch('intelligence.list', { limit: 25 }),
+      window.terminal.business.dispatch('search.query', {
+        query: '', types: ['content'], accountId: selected, includeArchived: true, limit: 100
+      }),
+      window.terminal.business.dispatch('deal.list', { accountId: selected })
     ]);
     if (productResult.ok) setProducts((productResult.result as { items: Product[] }).items);
     if (strategyResult.ok) setProposals((strategyResult.result as { items: Proposal[] }).items);
     if (leadResult.ok) setLeads((leadResult.result as { items: Lead[] }).items);
     if (intelligenceResult.ok) setCandidates((intelligenceResult.result as { items: IntelligenceCandidate[] }).items);
+    if (contentResult.ok) setContents((contentResult.result as { items: ContentItem[] }).items);
+    if (dealResult.ok) setDeals((dealResult.result as { items: Deal[] }).items);
   };
 
   useEffect(() => {
@@ -143,6 +155,43 @@ export function BusinessPanel() {
     if (!result.ok) return setMessage(`${result.error.code}: ${result.error.message}`);
     setMessage(destination === 'resource' ? '资讯候选已进入资料库，并保留来源关系。' : '资讯候选已建立内容项目，等待你决定是否创作。');
     await load(accountId);
+  };
+
+  const confirmConversation = async (record: { id: string }) => {
+    const result = await window.terminal.business.dispatch('conversation.confirm', {
+      id: record.id, expectedVersion: 1
+    });
+    if (!result.ok) return setMessage(`${result.error.code}: ${result.error.message}`);
+    setMessage('沟通提取结果已由你确认。');
+    await load(accountId);
+  };
+
+  const recordDeal = async () => {
+    const selectedLead = leads.find((item) => item.id === deal.leadId);
+    if (!selectedLead?.product) return setMessage('请先给客户关联产品，再记录成交结果。');
+    const result = await window.terminal.business.dispatch('deal.record', {
+      caller: 'ui', idempotencyKey: crypto.randomUUID(), leadId: selectedLead.id,
+      productId: selectedLead.product.id, outcome: deal.outcome,
+      amountMinor: deal.amount ? Math.round(Number(deal.amount) * 100) : undefined,
+      currency: 'GBP', decidedAt: new Date().toISOString(), reason: deal.reason,
+      contentInsight: deal.contentInsight
+    });
+    if (!result.ok) return setMessage(`${result.error.code}: ${result.error.message}`);
+    setDeal({ leadId: '', outcome: 'won', amount: '', reason: '', contentInsight: '' });
+    setMessage(deal.outcome === 'won' ? '成交结果已记录，并会进入内容复盘。' : '未成交原因已记录，并会进入内容复盘。');
+    await load(accountId);
+  };
+
+  const recordMetrics = async () => {
+    const numbers = Object.fromEntries(Object.entries(metrics)
+      .filter(([key, value]) => key !== 'contentId' && value !== '')
+      .map(([key, value]) => [key, Number(value)]));
+    const result = await window.terminal.business.dispatch('post_metrics.record', {
+      caller: 'ui', idempotencyKey: crypto.randomUUID(), contentId: metrics.contentId,
+      platform: 'xiaohongshu', observedAt: new Date().toISOString(), sourceType: 'manual', ...numbers
+    });
+    if (!result.ok) return setMessage(`${result.error.code}: ${result.error.message}`);
+    setMessage('平台表现已按“手工观察”记录，不会冒充自动回流。');
   };
 
   const changeProduct = (key: keyof typeof product) => (_: unknown, data: { value: string }) =>
@@ -251,9 +300,40 @@ export function BusinessPanel() {
               record.originalFile.fileStatus === 'modified' ? '原始文件已被外部修改，请核对' : '原始文件正常'
             }</small>
             {record.originalFile.fileStatus !== 'missing' && <Button size="small" onClick={() => window.terminal.system.openPath(record.originalFile.filePath)}>打开原始文件</Button>}
+            {record.confirmationStatus === 'pending' && <Button size="small" onClick={() => confirmConversation(record)}>确认提取结果</Button>}
           </div>)}
           {!item.conversations.length && <small>还没有沟通记录，可在上方粘贴私信或微信对话。</small>}
         </article>)}
+        <h3>记录成交结果</h3>
+        <div className="business-form">
+          <Select aria-label="成交客户" value={deal.leadId} onChange={(event) => setDeal((value) => ({ ...value, leadId: event.target.value }))}>
+            <option value="">选择客户</option>
+            {leads.map((item) => <option key={item.id} value={item.id}>{item.nickname}</option>)}
+          </Select>
+          <Select aria-label="成交结果" value={deal.outcome} onChange={(event) => setDeal((value) => ({ ...value, outcome: event.target.value }))}>
+            <option value="won">已成交</option><option value="lost">未成交</option>
+          </Select>
+          <Input aria-label="成交金额" type="number" min="0" placeholder="成交金额（英镑，可留空）" value={deal.amount} onChange={(_, data) => setDeal((value) => ({ ...value, amount: data.value }))} />
+          <Input aria-label="结果原因" placeholder="成交或未成交的主要原因" value={deal.reason} onChange={(_, data) => setDeal((value) => ({ ...value, reason: data.value }))} />
+          <Textarea aria-label="内容启发" placeholder="这次结果对下一轮内容有什么启发" value={deal.contentInsight} onChange={(_, data) => setDeal((value) => ({ ...value, contentInsight: data.value }))} />
+          <Button disabled={!deal.leadId || !deal.reason} onClick={recordDeal}>保存成交结果</Button>
+        </div>
+        {deals.map((item) => <article className="business-card" key={item.id}>
+          <strong>{item.nickname} · {item.outcome === 'won' ? '已成交' : '未成交'}</strong>
+          <span>{item.amount_minor === null ? '未记录金额' : `${item.currency} ${(item.amount_minor / 100).toFixed(2)}`} · {item.reason}</span>
+        </article>)}
+        <h3>记录帖子表现</h3>
+        <div className="business-form">
+          <Select aria-label="表现所属内容" value={metrics.contentId} onChange={(event) => setMetrics((value) => ({ ...value, contentId: event.target.value }))}>
+            <option value="">选择内容</option>
+            {contents.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+          </Select>
+          {(['views', 'likes', 'saves', 'comments', 'messages'] as const).map((field) =>
+            <Input key={field} aria-label={field} type="number" min="0" placeholder={
+              ({ views: '浏览', likes: '点赞', saves: '收藏', comments: '评论', messages: '私信' })[field]
+            } value={metrics[field]} onChange={(_, data) => setMetrics((value) => ({ ...value, [field]: data.value }))} />)}
+          <Button disabled={!metrics.contentId} onClick={recordMetrics}>保存手工观察</Button>
+        </div>
       </section>
     </div>
   </section>;
