@@ -52,7 +52,8 @@
     "test:pi-003": "node scripts/pi-003-check.mjs",
     "test:pi-004:install": "node scripts/pi-004-install-check.mjs",
     "test:pi-004:api": "node scripts/pi-004-custom-api-check.mjs",
-    "test:pi-004": "node scripts/pi-004-check.mjs"
+    "test:pi-004": "node scripts/pi-004-check.mjs",
+    "test:uir-005": "node scripts/uir-005-check.mjs"
   },
   "devDependencies": {
     "@electron-forge/cli": "7.11.2",

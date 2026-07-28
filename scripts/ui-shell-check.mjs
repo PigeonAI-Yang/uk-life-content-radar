@@ -68,6 +68,14 @@ try {
   if (globalThis.process.env.UI_RECEIPT_ID === 'UIR-002') {
     await page.evaluate((filePath) => globalThis.terminal.system.capturePage(filePath), resolve(receiptDirectory, 'workbench.png'));
   }
+  if (globalThis.process.env.UI_RECEIPT_ID === 'UIR-005') {
+    await page.getByRole('complementary', { name: 'Pi 协作栏' }).waitFor();
+    await page.getByLabel('给 Pi 发消息').waitFor();
+    await page.evaluate((filePath) => globalThis.terminal.system.capturePage(filePath), resolve(receiptDirectory, 'pi-sidebar-expanded.png'));
+    await page.getByRole('button', { name: '收起 Pi 协作栏' }).click();
+    await page.getByRole('button', { name: '展开 Pi 协作栏' }).waitFor();
+    await page.getByRole('button', { name: '展开 Pi 协作栏' }).click();
+  }
   for (const route of ['浏览与收集', '资料库', '内容', '素材库', '发布包', '情报', '账号', '任务', '设置']) {
     await page.getByRole('button', { name: route }).click();
     await page.getByRole('heading', { name: route, exact: true, level: 1 }).waitFor();

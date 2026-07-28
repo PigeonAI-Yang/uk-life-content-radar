@@ -31,6 +31,7 @@ import { LibraryPanel } from './LibraryPanel';
 import { ContentEditorPanel } from './ContentEditorPanel';
 import { AssetPanel } from './AssetPanel';
 import { BusinessPanel } from './BusinessPanel';
+import { PiSidebar } from './PiSidebar';
 import './app.css';
 
 export function App() {
@@ -112,6 +113,7 @@ export function App() {
           </div>
           {route === '设置' ? <SettingsPanel /> : route === '账号' ? <AccountPanel /> : route === '任务' ? <TaskPanel /> : route === '工作台' ? <MinimumLoopPanel /> : route === '内容' ? <ContentEditorPanel /> : route === '发布包' ? <PublishingPanel /> : route === '情报' ? <BusinessPanel /> : route === '浏览与收集' ? <BrowserPanel /> : route === '资料库' ? <LibraryPanel /> : <AssetPanel />}
         </main>
+        <PiSidebar route={route} />
       </div>
     </FluentProvider>
   );

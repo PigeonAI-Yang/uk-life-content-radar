@@ -14,6 +14,7 @@ sources/
 assets/
 packages/
 contents/
+agent-runs/
 
 # Local release artifact; publish installers as GitHub Release assets.
 *.exe

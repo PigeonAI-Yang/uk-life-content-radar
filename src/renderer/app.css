@@ -21,6 +21,48 @@ button:focus-visible, input:focus-visible, select:focus-visible, [contenteditabl
   outline-offset: 2px;
 }
 main { flex: 1; min-width: 0; overflow: auto; padding: 16px 18px 28px; }
+.pi-sidebar {
+  width: 360px;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-left: 1px solid #dedede;
+  background: #fff;
+  transition: width 180ms cubic-bezier(.22, 1, .36, 1);
+}
+.pi-sidebar > header {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 0 14px;
+  border-bottom: 1px solid #e7e7e7;
+}
+.pi-sidebar > header > div { display: flex; align-items: center; gap: 8px; }
+.pi-context { display: flex; justify-content: space-between; gap: 8px; padding: 9px 14px; border-bottom: 1px solid #eeeeee; color: #555; }
+.pi-context span { overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.pi-context small { flex: 0 0 auto; }
+.pi-messages { flex: 1; overflow: auto; padding: 14px; }
+.pi-messages article { display: grid; gap: 8px; margin-bottom: 18px; }
+.pi-user-message { justify-self: end; max-width: 88%; padding: 8px 11px; border-radius: 12px 12px 3px 12px; background: #e9e9e9; line-height: 1.5; white-space: pre-wrap; }
+.pi-agent-message { max-width: 100%; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pi-agent-message.failed { padding: 9px 11px; border-radius: 6px; background: #fdf3f4; color: #8a1c26; }
+.pi-agent-message.running, .pi-agent-message.queued { color: #555; }
+.pi-agent-message button { display: block; margin-top: 6px; }
+.pi-empty { display: grid; justify-items: center; gap: 8px; padding: 56px 20px; color: #555; text-align: center; }
+.pi-empty svg { font-size: 24px; }
+.pi-empty p { max-width: 28ch; margin: 0; line-height: 1.6; }
+.pi-composer { padding: 10px 12px 12px; border-top: 1px solid #dedede; }
+.pi-input-wrap { position: relative; }
+.pi-input-wrap > .fui-Textarea { width: 100%; }
+.pi-input-wrap textarea { min-height: 88px; max-height: 180px; padding: 10px 44px 36px 11px; line-height: 1.5; }
+.pi-input-wrap > button { position: absolute; right: 7px; bottom: 7px; min-width: 32px; padding: 0; }
+.pi-sidebar.collapsed { width: 48px; align-items: center; gap: 12px; padding-top: 8px; }
+.pi-sidebar.collapsed > span { font-size: 12px; font-weight: 600; writing-mode: vertical-rl; }
+@media (prefers-reduced-motion: reduce) {
+  .pi-sidebar { transition: none; }
+}
 .page-heading { display: flex; align-items: center; justify-content: space-between; }
 h1 { margin: 0 0 14px; font-size: 22px; line-height: 1.25; text-wrap: balance; }
 h2, h3 { text-wrap: balance; }
