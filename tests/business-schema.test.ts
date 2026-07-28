@@ -14,14 +14,14 @@ afterEach(() => {
 });
 
 describe('内容生意工作台迁移', () => {
-  test('已有迁移链升级到版本 14 并建立真实业务目录', () => {
+  test('已有迁移链升级到版本 15 并建立真实业务目录', () => {
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'content-terminal-biz-'));
     temporaryPaths.push(temporary);
     const rootPath = path.join(temporary, 'business-root');
     const configPath = path.join(temporary, 'profile', 'root.json');
     const database = new AppDatabase();
     const settings = database.initialize(rootPath, configPath);
-    expect(settings.migrationVersion).toBe(14);
+    expect(settings.migrationVersion).toBe(15);
     for (const directory of rootBusinessDirectories) {
       expect(fs.statSync(path.join(rootPath, directory)).isDirectory()).toBe(true);
     }
@@ -39,6 +39,7 @@ describe('内容生意工作台迁移', () => {
       'deals',
       'post_metrics',
       'intelligence_candidates'
+      , 'intelligence_scan_sources'
     ]));
     database.close();
   });

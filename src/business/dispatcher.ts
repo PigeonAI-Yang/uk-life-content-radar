@@ -17,6 +17,7 @@ import { AssetService } from './asset-service';
 import { BusinessManagementService } from './business-management-service';
 import { CustomerService } from './customer-service';
 import { BusinessSnapshotService } from './business-snapshot-service';
+import { IntelligenceService } from './intelligence-service';
 
 type Account = {
   id: string;
@@ -65,6 +66,7 @@ export class CommandDispatcher {
   private readonly management: BusinessManagementService;
   private readonly customers: CustomerService;
   private readonly snapshot: BusinessSnapshotService;
+  private readonly intelligence: IntelligenceService;
 
   constructor(private readonly database: Database.Database, private readonly rootPath: string, browser: BrowserManager) {
     this.tasks = new TaskService(database, rootPath);
@@ -77,6 +79,7 @@ export class CommandDispatcher {
     this.management = new BusinessManagementService(database, rootPath);
     this.customers = new CustomerService(database, rootPath);
     this.snapshot = new BusinessSnapshotService(database, rootPath);
+    this.intelligence = new IntelligenceService(database);
   }
 
   async dispatch(name: string, input: unknown): Promise<DispatchResult> {
@@ -152,6 +155,33 @@ export class CommandDispatcher {
     if (command === 'post_metrics.list') return this.customers.listMetrics(String(input.contentId));
     if (command === 'business.snapshot') return this.snapshot.snapshot(String(input.accountId));
     if (command === 'business.pending') return this.snapshot.pending(String(input.accountId));
+    if (command === 'intelligence.record_scan') {
+      return this.runIdempotent(command, input, () => this.intelligence.recordScan(input));
+    }
+    if (command === 'intelligence.get') return this.intelligence.getCandidate(String(input.id));
+    if (command === 'intelligence.list') {
+      return this.intelligence.listCandidates(input.status ? String(input.status) : undefined, Number(input.limit));
+    }
+    if (command === 'intelligence.promote_resource') {
+      return this.runIdempotent(command, input, () => {
+        const candidate = this.intelligence.getCandidate(String(input.candidateId));
+        const resource = this.core.createResource({
+          title: candidate.title,
+          body: `${candidate.impact}\n\n来源：${candidate.sourceUrl}`,
+          topic: candidate.angles[0] ?? '',
+          targetAudience: candidate.audience,
+          tags: ['资讯候选']
+        });
+        return { candidate: this.intelligence.markPromoted(candidate.id, 'resource', resource.id), resource };
+      });
+    }
+    if (command === 'intelligence.promote_content') {
+      return this.runIdempotent(command, input, () => {
+        const candidate = this.intelligence.getCandidate(String(input.candidateId));
+        const content = this.core.createContent({ accountId: input.accountId, title: candidate.title });
+        return { candidate: this.intelligence.markPromoted(candidate.id, 'content', content.id), content };
+      });
+    }
     if (command === 'task.start') return this.tasks.start(input);
     if (command === 'task.get') return this.tasks.get(String(input.taskId));
     if (command === 'task.list') return this.tasks.list(String(input.query), Number(input.limit));

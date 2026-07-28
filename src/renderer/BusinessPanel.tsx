@@ -18,6 +18,10 @@ type Lead = {
   sourceContent: { id: string; title: string } | null; product: { id: string; name: string } | null;
   conversations: { id: string; summary: string; confirmationStatus: string; originalFile: FileReadback }[];
 };
+type IntelligenceCandidate = {
+  id: string; title: string; audience: string; impact: string; timeliness: string;
+  verificationStatus: string; discoveredAt: string; publishBefore: string | null; status: string;
+};
 
 export function BusinessPanel() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -25,6 +29,7 @@ export function BusinessPanel() {
   const [products, setProducts] = useState<Product[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [candidates, setCandidates] = useState<IntelligenceCandidate[]>([]);
   const [message, setMessage] = useState('');
   const [product, setProduct] = useState({
     name: '', targetCustomer: '', problem: '', priceRange: '', serviceScope: '',
@@ -37,14 +42,16 @@ export function BusinessPanel() {
 
   const load = async (selected: string) => {
     if (!selected) return;
-    const [productResult, strategyResult, leadResult] = await Promise.all([
+    const [productResult, strategyResult, leadResult, intelligenceResult] = await Promise.all([
       window.terminal.business.dispatch('product.list', { accountId: selected }),
       window.terminal.business.dispatch('strategy.list', { accountId: selected }),
-      window.terminal.business.dispatch('lead.list', { accountId: selected })
+      window.terminal.business.dispatch('lead.list', { accountId: selected }),
+      window.terminal.business.dispatch('intelligence.list', { limit: 25 })
     ]);
     if (productResult.ok) setProducts((productResult.result as { items: Product[] }).items);
     if (strategyResult.ok) setProposals((strategyResult.result as { items: Proposal[] }).items);
     if (leadResult.ok) setLeads((leadResult.result as { items: Lead[] }).items);
+    if (intelligenceResult.ok) setCandidates((intelligenceResult.result as { items: IntelligenceCandidate[] }).items);
   };
 
   useEffect(() => {
@@ -128,6 +135,16 @@ export function BusinessPanel() {
     await load(accountId);
   };
 
+  const promoteCandidate = async (item: IntelligenceCandidate, destination: 'resource' | 'content') => {
+    const result = await window.terminal.business.dispatch(`intelligence.promote_${destination}`, {
+      caller: 'ui', idempotencyKey: crypto.randomUUID(), candidateId: item.id,
+      ...(destination === 'content' ? { accountId } : {})
+    });
+    if (!result.ok) return setMessage(`${result.error.code}: ${result.error.message}`);
+    setMessage(destination === 'resource' ? '资讯候选已进入资料库，并保留来源关系。' : '资讯候选已建立内容项目，等待你决定是否创作。');
+    await load(accountId);
+  };
+
   const changeProduct = (key: keyof typeof product) => (_: unknown, data: { value: string }) =>
     setProduct((current) => ({ ...current, [key]: data.value }));
   const stageNames: Record<string, string> = {
@@ -172,6 +189,23 @@ export function BusinessPanel() {
           <p>{item.targetCustomer}：{item.problem}</p>
           <small>{item.versionFile.fileStatus} · {item.versionFile.filePath}</small>
         </article>)}
+      </section>
+      <section>
+        <h2>资讯候选</h2>
+        {!candidates.length && <p className="empty-copy">还没有扫描候选。后台扫描只收集和整理，不会替你决定选题。</p>}
+        {candidates.map((item) => {
+          const isToday = item.discoveredAt.slice(0, 10) === today;
+          return <article className="business-card" key={item.id}>
+            <strong>{item.title}</strong>
+            <span>{isToday ? '今天发现' : `历史候选（${item.discoveredAt.slice(0, 10)}）`} · {item.verificationStatus}</span>
+            <p>{item.impact}</p><span>影响人群：{item.audience} · 时效：{item.timeliness}</span>
+            {item.publishBefore && <small>建议最晚处理：{item.publishBefore.slice(0, 10)}</small>}
+            {item.status === 'candidate' && <div>
+              <Button onClick={() => promoteCandidate(item, 'resource')}>存入资料库</Button>
+              <Button onClick={() => promoteCandidate(item, 'content')}>建立内容项目</Button>
+            </div>}
+          </article>;
+        })}
       </section>
       <section>
         <h2>经营建议</h2>

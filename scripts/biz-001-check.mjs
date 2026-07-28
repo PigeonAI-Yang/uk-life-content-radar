@@ -15,10 +15,10 @@ const result = {
   task: 'BIZ-001',
   status: run.status === 0 ? 'completed' : 'partial',
   command: `node ${command[1].join(' ')}`,
-  migrationVersion: 14,
+  migrationVersion: 15,
   databaseObjects: [
     'products', 'product_versions', 'strategy_proposals', 'strategy_versions',
-    'leads', 'conversation_records', 'deals', 'post_metrics', 'intelligence_candidates'
+    'leads', 'conversation_records', 'deals', 'post_metrics', 'intelligence_candidates', 'intelligence_scan_sources'
   ],
   businessDirectories: [
     'business/products', 'business/strategies', 'customers', 'conversations', 'intelligence'

@@ -509,5 +509,24 @@ export const migrations = [
       CREATE INDEX intelligence_candidates_status_deadline
         ON intelligence_candidates(status, publish_before, updated_at DESC, id);
     `
+  },
+  {
+    version: 15,
+    sql: `
+      ALTER TABLE intelligence_candidates ADD COLUMN promoted_resource_id TEXT REFERENCES sources(id);
+      ALTER TABLE intelligence_candidates ADD COLUMN promoted_content_id TEXT REFERENCES content_projects(id);
+      CREATE TABLE intelligence_scan_sources (
+        id TEXT PRIMARY KEY,
+        task_id TEXT NOT NULL REFERENCES tasks(id),
+        source_name TEXT NOT NULL,
+        source_id TEXT REFERENCES sources(id),
+        status TEXT NOT NULL CHECK(status IN ('succeeded', 'failed')),
+        item_count INTEGER NOT NULL,
+        error TEXT,
+        last_success_at TEXT,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX intelligence_scan_sources_task ON intelligence_scan_sources(task_id, source_name);
+    `
   }
 ] as const;

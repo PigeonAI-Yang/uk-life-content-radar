@@ -43,7 +43,8 @@
     "test:biz-002": "node scripts/biz-002-check.mjs",
     "test:biz-003": "node scripts/biz-003-check.mjs",
     "test:biz-004": "node scripts/biz-004-check.mjs",
-    "test:biz-005": "node scripts/biz-005-check.mjs"
+    "test:biz-005": "node scripts/biz-005-check.mjs",
+    "test:biz-006": "node scripts/biz-006-check.mjs"
   },
   "devDependencies": {
     "@electron-forge/cli": "7.11.2",

@@ -173,6 +173,31 @@ export const commandSchemas = {
   'post_metrics.list': contentId,
   'business.snapshot': accountId,
   'business.pending': accountId,
+  'intelligence.record_scan': z.object({
+    ...idempotent,
+    startedAt: z.string().datetime(),
+    endedAt: z.string().datetime(),
+    sources: z.array(z.object({
+      name: z.string().min(1), sourceId: z.string().min(1).optional(),
+      status: z.enum(['succeeded', 'failed']), itemCount: z.number().int().min(0),
+      error: z.string().optional(), lastSuccessAt: z.string().datetime().optional()
+    }).strict()).min(1),
+    candidates: z.array(z.object({
+      sourceId: z.string().min(1).optional(), title: z.string().min(1),
+      sourceUrl: z.string().url(), audience: z.string().min(1), impact: z.string().min(1),
+      timeliness: z.string().min(1), verificationStatus: z.string().min(1),
+      duplicateOfId: z.string().min(1).optional(), angles: z.array(z.string().min(1)),
+      publishBefore: z.string().datetime().optional(), discoveredAt: z.string().datetime()
+    }).strict()).default([])
+  }).strict(),
+  'intelligence.get': id,
+  'intelligence.list': z.object({ status: z.string().optional(), limit: z.number().int().min(1).max(100).default(25) }).strict(),
+  'intelligence.promote_resource': z.object({
+    ...idempotent, candidateId: z.string().min(1)
+  }).strict(),
+  'intelligence.promote_content': z.object({
+    ...idempotent, candidateId: z.string().min(1), accountId: z.string().min(1)
+  }).strict(),
   'browser.tabs.list': z.object({}).strict(),
   'collect.webpage': z.object({ ...idempotent, tabId: z.string().min(1), destination: z.enum(['library', 'content']) }).strict(),
   'collect.selection': z.object({ ...idempotent, tabId: z.string().min(1), destination: z.enum(['library', 'content']) }).strict(),
