@@ -16,6 +16,7 @@ import { SearchService } from './search-service';
 import { AssetService } from './asset-service';
 import { BusinessManagementService } from './business-management-service';
 import { CustomerService } from './customer-service';
+import { BusinessSnapshotService } from './business-snapshot-service';
 
 type Account = {
   id: string;
@@ -63,6 +64,7 @@ export class CommandDispatcher {
   private readonly assets: AssetService;
   private readonly management: BusinessManagementService;
   private readonly customers: CustomerService;
+  private readonly snapshot: BusinessSnapshotService;
 
   constructor(private readonly database: Database.Database, private readonly rootPath: string, browser: BrowserManager) {
     this.tasks = new TaskService(database, rootPath);
@@ -74,6 +76,7 @@ export class CommandDispatcher {
     this.assets = new AssetService(database, rootPath);
     this.management = new BusinessManagementService(database, rootPath);
     this.customers = new CustomerService(database, rootPath);
+    this.snapshot = new BusinessSnapshotService(database, rootPath);
   }
 
   async dispatch(name: string, input: unknown): Promise<DispatchResult> {
@@ -147,6 +150,8 @@ export class CommandDispatcher {
       return this.runIdempotent(command, input, () => this.customers.recordMetrics(input));
     }
     if (command === 'post_metrics.list') return this.customers.listMetrics(String(input.contentId));
+    if (command === 'business.snapshot') return this.snapshot.snapshot(String(input.accountId));
+    if (command === 'business.pending') return this.snapshot.pending(String(input.accountId));
     if (command === 'task.start') return this.tasks.start(input);
     if (command === 'task.get') return this.tasks.get(String(input.taskId));
     if (command === 'task.list') return this.tasks.list(String(input.query), Number(input.limit));

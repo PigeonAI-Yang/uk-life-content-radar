@@ -171,6 +171,8 @@ export const commandSchemas = {
     evidenceFilePath: z.string().min(1).optional()
   }).strict(),
   'post_metrics.list': contentId,
+  'business.snapshot': accountId,
+  'business.pending': accountId,
   'browser.tabs.list': z.object({}).strict(),
   'collect.webpage': z.object({ ...idempotent, tabId: z.string().min(1), destination: z.enum(['library', 'content']) }).strict(),
   'collect.selection': z.object({ ...idempotent, tabId: z.string().min(1), destination: z.enum(['library', 'content']) }).strict(),
