@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import { readStoredCredential } from '@earendil-works/pi-coding-agent';
-import { EncryptedApiKeyStore, importCodexSubscription, requireAgentAuth, scanAgentAuth } from '../src/agent/auth-service';
+import { CustomApiConfigStore, EncryptedApiKeyStore, importCodexSubscription, requireAgentAuth, scanAgentAuth } from '../src/agent/auth-service';
 
 const temporaryPaths: string[] = [];
 
@@ -77,5 +77,16 @@ describe('Pi 认证探测', () => {
     expect(readStoredCredential('openai-codex', piAuthPath)).toMatchObject({
       type: 'oauth', accountId: 'account', expires: 4_102_444_800_000
     });
+  });
+
+  test('自定义 API 只保存地址、协议和模型，不保存密钥', () => {
+    const target = workspace();
+    const filePath = path.join(target, 'agent-api.json');
+    const store = new CustomApiConfigStore(filePath);
+    expect(store.save({ baseUrl: 'http://127.0.0.1:61946/v1/', model: 'gpt-5.6-sol' }))
+      .toEqual({ baseUrl: 'http://127.0.0.1:61946/v1', model: 'gpt-5.6-sol', protocol: 'openai-responses' });
+    expect(fs.readFileSync(filePath, 'utf8')).not.toMatch(/key|token|secret/i);
+    expect(() => store.save({ baseUrl: 'file:///not-an-api', model: 'model' }))
+      .toThrow('自定义 API 地址或模型无效');
   });
 });

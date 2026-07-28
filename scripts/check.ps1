@@ -99,12 +99,14 @@ Assert-Contains -RelativePath 'docs/spec.md' -Pattern '^## 15\. 内容事业合�
 Assert-Contains -RelativePath 'src/storage/migrations.ts' -Pattern 'version:\s*14' -Description '内容生意数据库迁移'
 Assert-Contains -RelativePath 'docs/spec.md' -Pattern '^## 16\. Pi Agent 执行内核\s*$' -Description 'Pi Agent 技术契约'
 Assert-Contains -RelativePath 'docs/tasks.md' -Pattern '^### PI-001 Pi 产品契约、依赖、认证探测与失败实验\s*$' -Description 'Pi Agent 首任务'
-Assert-Contains -RelativePath 'docs/tasks.md' -Pattern '^### PI-004 真实订阅、安装应用与自动接力验收\s*$' -Description 'Pi Agent 最终验收'
+Assert-Contains -RelativePath 'docs/tasks.md' -Pattern '^### PI-004 真实自定义 API、安装应用与自动接力验收\s*$' -Description 'Pi Agent 最终验收'
 Assert-Contains -RelativePath 'package.json' -Pattern '"@earendil-works/pi-coding-agent":\s*"0\.82\.1"' -Description 'Pi SDK 锁定版本'
 Assert-Contains -RelativePath 'src/tasks/task-service.ts' -Pattern "type === 'agent\.execute'" -Description 'Pi 持久任务入口'
 Assert-Contains -RelativePath 'src/agent/pi-agent-executor.ts' -Pattern "name: 'terminal_mcp'" -Description 'Pi 仅通过统一 MCP 工具入口'
 Assert-Contains -RelativePath 'src/business/dispatcher.ts' -Pattern "triggerEvent: 'strategy\.approved'" -Description '批准后自动创建 Pi 接力'
 Assert-Contains -RelativePath 'src/renderer/SettingsPanel.tsx' -Pattern '使用本机 Codex 登录' -Description 'Pi 登录设置入口'
+Assert-Contains -RelativePath 'src/renderer/SettingsPanel.tsx' -Pattern '导入 CockpitTools' -Description 'CockpitTools 自定义 API 入口'
+Assert-Contains -RelativePath 'src/agent/pi-agent-executor.ts' -Pattern "'custom-api'" -Description 'Pi 自定义 Responses API'
 
 function Invoke-NpmGate {
     param([Parameter(Mandatory)][string]$Script)

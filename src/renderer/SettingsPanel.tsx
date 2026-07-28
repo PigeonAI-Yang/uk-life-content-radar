@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Input, MessageBar, MessageBarBody } from '@fluentui/react-components';
+import { Button, Input, MessageBar, MessageBarBody, Select } from '@fluentui/react-components';
 import type { RootSettings } from '../storage/database';
 
 export function SettingsPanel() {
@@ -8,6 +8,10 @@ export function SettingsPanel() {
   const [error, setError] = useState('');
   const [scanning, setScanning] = useState(false);
   const [apiKey, setApiKey] = useState('');
+  const [apiBaseUrl, setApiBaseUrl] = useState('');
+  const [apiModel, setApiModel] = useState('');
+  const [apiModels, setApiModels] = useState<string[]>([]);
+  const [apiStatus, setApiStatus] = useState('');
   const [auth, setAuth] = useState<{ selected: string | null; candidates: { source: string; detected: boolean; message: string }[] }>();
   const [authEvent, setAuthEvent] = useState('');
   const [business, setBusiness] = useState<{
@@ -30,6 +34,11 @@ export function SettingsPanel() {
 
   useEffect(() => {
     void window.terminal.agent.scanAuth().then((value) => setAuth(value as typeof auth));
+    void window.terminal.agent.getCustomApi().then((value) => {
+      const result = value as { config?: { baseUrl: string; model: string } };
+      setApiBaseUrl(result.config?.baseUrl ?? '');
+      setApiModel(result.config?.model ?? '');
+    });
     const unsubscribe = window.terminal.agent.onAuthEvent((value) => {
       const event = value as { type?: string; userCode?: string; instructions?: string };
       setAuthEvent(event.type === 'device_code' ? `验证码：${event.userCode}` : event.instructions ?? '请在浏览器完成登录');
@@ -105,7 +114,7 @@ export function SettingsPanel() {
         </div></>
       )}
       <section className="settings-agent">
-        <div className="panel-heading"><div><h2>Pi 工作助手</h2><p>优先使用 ChatGPT Plus/Pro 订阅，也可使用加密保存的 API Key。</p></div></div>
+        <div className="panel-heading"><div><h2>Pi 工作助手</h2><p>可直接接入本机 CockpitTools，也可填写 OpenAI Responses 兼容 API。</p></div></div>
         <p>{auth?.selected ? '已检测到可用登录候选，连接后才会确认有效。' : '尚未登录。'}</p>
         {auth?.candidates.map((item) => <small key={item.source}>{item.message}<br /></small>)}
         {authEvent && <MessageBar><MessageBarBody>{authEvent}</MessageBarBody></MessageBar>}
@@ -116,12 +125,54 @@ export function SettingsPanel() {
           <Button onClick={async () => setAuth(await window.terminal.agent.login('device_code') as typeof auth)}>验证码登录</Button>
         </div>
         <div className="settings-row">
-          <Input type="password" aria-label="OpenAI API Key" placeholder="输入 API Key" value={apiKey} onChange={(_, data) => setApiKey(data.value)} />
-          <Button disabled={!apiKey} onClick={async () => {
-            setAuth(await window.terminal.agent.saveApiKey(apiKey) as typeof auth);
-            setApiKey('');
-          }}>加密保存</Button>
+          <Button onClick={async () => {
+            try {
+              const result = await window.terminal.agent.importCockpit() as {
+                config: { baseUrl: string; model: string }; models: string[];
+              };
+              setApiBaseUrl(result.config.baseUrl); setApiModel(result.config.model); setApiModels(result.models);
+              setApiStatus('已导入 CockpitTools，本地密钥已加密保存。');
+            } catch (cause) {
+              setApiStatus(cause instanceof Error ? cause.message : String(cause));
+            }
+          }}>导入 CockpitTools</Button>
+          <Input aria-label="自定义 API 地址" placeholder="例如 http://127.0.0.1:61946/v1" value={apiBaseUrl} onChange={(_, data) => setApiBaseUrl(data.value)} />
+          <Input type="password" aria-label="自定义 API Key" placeholder="留空表示沿用已保存密钥" value={apiKey} onChange={(_, data) => setApiKey(data.value)} />
         </div>
+        <div className="settings-row">
+          {apiModels.length ? <Select aria-label="自定义 API 模型" value={apiModel} onChange={(event) => setApiModel(event.target.value)}>
+            {apiModels.map((model) => <option key={model} value={model}>{model}</option>)}
+          </Select> : <Input aria-label="自定义 API 模型" placeholder="模型名称" value={apiModel} onChange={(_, data) => setApiModel(data.value)} />}
+          <Button disabled={!apiBaseUrl || !apiModel} onClick={async () => {
+            try {
+              await window.terminal.agent.saveCustomApi({ baseUrl: apiBaseUrl, model: apiModel, apiKey: apiKey || undefined });
+              setApiKey(''); setApiStatus('自定义 API 已保存。');
+            } catch (cause) {
+              setApiStatus(cause instanceof Error ? cause.message : String(cause));
+            }
+          }}>保存 API 配置</Button>
+          <Button disabled={!apiBaseUrl} onClick={async () => {
+            try {
+              await window.terminal.agent.saveCustomApi({ baseUrl: apiBaseUrl, model: apiModel || 'gpt-5.6-sol', apiKey: apiKey || undefined });
+              const result = await window.terminal.agent.discoverModels() as { models: string[] };
+              setApiModels(result.models);
+              if (!apiModel && result.models[0]) setApiModel(result.models[0]);
+              setApiStatus(`发现 ${result.models.length} 个模型。`);
+            } catch (cause) {
+              setApiStatus(cause instanceof Error ? cause.message : String(cause));
+            }
+          }}>读取模型</Button>
+          <Button disabled={!apiBaseUrl || !apiModel} onClick={async () => {
+            try {
+              await window.terminal.agent.saveCustomApi({ baseUrl: apiBaseUrl, model: apiModel, apiKey: apiKey || undefined });
+              const result = await window.terminal.agent.testCustomApi() as { model: string };
+              setApiKey(''); setApiStatus(`连接成功：${result.model}`);
+            } catch (cause) {
+              setApiStatus(cause instanceof Error ? cause.message : String(cause));
+            }
+          }}>测试连接</Button>
+        </div>
+        {apiStatus && <MessageBar><MessageBarBody>{apiStatus}</MessageBarBody></MessageBar>}
       </section>
       <Button onClick={() => window.terminal.lifecycle.quit()}>完全退出</Button>
     </section>

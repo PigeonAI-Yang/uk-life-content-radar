@@ -10,7 +10,7 @@ import { startPipeServer } from './pipe-server';
 import { BrowserManager } from './browser-manager';
 import { runSharpProbe } from './sharp-probe';
 import { PiAgentExecutor } from '../agent/pi-agent-executor';
-import { EncryptedApiKeyStore, importCodexSubscription, scanAgentAuth } from '../agent/auth-service';
+import { CustomApiConfigStore, EncryptedApiKeyStore, importCodexSubscription, scanAgentAuth } from '../agent/auth-service';
 import { ModelRuntime } from '@earendil-works/pi-coding-agent';
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
@@ -68,6 +68,7 @@ void app.whenReady().then(() => {
   const pipeState: { current?: ReturnType<typeof startPipeServer> } = {};
   const agentDir = path.join(app.getPath('userData'), 'pi-agent');
   const apiKeyStore = new EncryptedApiKeyStore(path.join(app.getPath('userData'), 'agent-api-key.json'), safeStorage);
+  const customApiStore = new CustomApiConfigStore(path.join(app.getPath('userData'), 'agent-api.json'));
   const authStatus = () => scanAgentAuth({
     piAuthPath: path.join(agentDir, 'auth.json'),
     codexAuthPath: path.join(os.homedir(), '.codex', 'auth.json'),
@@ -86,13 +87,85 @@ void app.whenReady().then(() => {
       skillPath: app.isPackaged
         ? path.join(process.resourcesPath, 'content-business-partner', 'SKILL.md')
         : path.resolve('skills', 'content-business-partner', 'SKILL.md'),
-      apiKeyProvider: () => apiKeyStore.isConfigured() ? apiKeyStore.load() : undefined
+      customApiProvider: () => {
+        const config = customApiStore.read();
+        return config && apiKeyStore.isConfigured() ? { ...config, apiKey: apiKeyStore.load() } : undefined;
+      }
     }));
   };
   ipcMain.handle('agent:scan-auth', () => authStatus());
   ipcMain.handle('agent:save-api-key', (_event, apiKey: string) => {
     apiKeyStore.save(apiKey);
     return authStatus();
+  });
+  ipcMain.handle('agent:get-custom-api', () => ({
+    config: customApiStore.read(),
+    apiKeyConfigured: apiKeyStore.isConfigured()
+  }));
+  ipcMain.handle('agent:save-custom-api', (_event, input: { baseUrl: string; model: string; apiKey?: string }) => {
+    if (input.apiKey?.trim()) apiKeyStore.save(input.apiKey);
+    if (!apiKeyStore.isConfigured()) {
+      throw new BusinessError('AGENT_AUTH_REQUIRED', '自定义 API 尚未配置密钥', '输入 API Key');
+    }
+    return { config: customApiStore.save(input), apiKeyConfigured: true };
+  });
+  ipcMain.handle('agent:import-cockpit', () => {
+    const directory = path.join(os.homedir(), '.antigravity_cockpit', 'codex_local_access_sidecar');
+    const config = JSON.parse(fs.readFileSync(path.join(directory, 'config.json'), 'utf8')) as {
+      host?: unknown; port?: unknown; 'api-keys'?: unknown;
+    };
+    const manifest = JSON.parse(fs.readFileSync(path.join(directory, 'manifest.json'), 'utf8')) as {
+      modelIds?: unknown;
+    };
+    const keys = Array.isArray(config['api-keys']) ? config['api-keys'].map(String).filter(Boolean) : [];
+    const models = Array.isArray(manifest.modelIds) ? manifest.modelIds.map(String).filter(Boolean) : [];
+    const host = String(config.host ?? '127.0.0.1');
+    const port = Number(config.port);
+    if (!keys[0] || !Number.isInteger(port) || !models.length) {
+      throw new BusinessError('AGENT_AUTH_REQUIRED', 'CockpitTools API 配置不可用', '在 CockpitTools 中启用 API 服务和账号');
+    }
+    apiKeyStore.save(keys[0]);
+    const saved = customApiStore.save({
+      baseUrl: `http://${host}:${port}/v1`,
+      model: models.includes('gpt-5.6-sol') ? 'gpt-5.6-sol' : models[0]
+    });
+    return { config: saved, apiKeyConfigured: true, models };
+  });
+  const customApiRequest = async (pathName: string, init?: RequestInit) => {
+    const config = customApiStore.read();
+    if (!config || !apiKeyStore.isConfigured()) {
+      throw new BusinessError('AGENT_AUTH_REQUIRED', '自定义 API 尚未配置完成', '填写接口地址、API Key 和模型');
+    }
+    const response = await fetch(`${config.baseUrl}${pathName}`, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${apiKeyStore.load()}`,
+        'Content-Type': 'application/json',
+        ...init?.headers
+      },
+      signal: AbortSignal.timeout(60_000)
+    });
+    if (!response.ok) {
+      throw new BusinessError('AGENT_MODEL_UNAVAILABLE', `自定义 API 返回 ${response.status}`, '检查 CockpitTools 服务、密钥和模型');
+    }
+    return response.json() as Promise<Record<string, unknown>>;
+  };
+  ipcMain.handle('agent:discover-models', async () => {
+    const response = await customApiRequest('/models');
+    return {
+      models: Array.isArray(response.data)
+        ? response.data.map((item) => String((item as { id?: unknown }).id ?? '')).filter(Boolean)
+        : []
+    };
+  });
+  ipcMain.handle('agent:test-custom-api', async () => {
+    const config = customApiStore.read();
+    if (!config) throw new BusinessError('AGENT_MODEL_UNAVAILABLE', '尚未选择模型', '先保存自定义 API');
+    const response = await customApiRequest('/responses', {
+      method: 'POST',
+      body: JSON.stringify({ model: config.model, input: '只回复 OK', max_output_tokens: 16, stream: false })
+    });
+    return { connected: Boolean(response.id), status: response.status, model: response.model ?? config.model };
   });
   ipcMain.handle('agent:import-codex', async () => {
     await importCodexSubscription(

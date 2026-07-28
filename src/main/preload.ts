@@ -14,6 +14,11 @@ contextBridge.exposeInMainWorld('terminal', {
     scanAuth: () => ipcRenderer.invoke('agent:scan-auth'),
     saveApiKey: (apiKey: string) => ipcRenderer.invoke('agent:save-api-key', apiKey),
     importCodex: () => ipcRenderer.invoke('agent:import-codex'),
+    getCustomApi: () => ipcRenderer.invoke('agent:get-custom-api'),
+    saveCustomApi: (input: { baseUrl: string; model: string; apiKey?: string }) => ipcRenderer.invoke('agent:save-custom-api', input),
+    importCockpit: () => ipcRenderer.invoke('agent:import-cockpit'),
+    discoverModels: () => ipcRenderer.invoke('agent:discover-models'),
+    testCustomApi: () => ipcRenderer.invoke('agent:test-custom-api'),
     login: (method: 'browser' | 'device_code') => ipcRenderer.invoke('agent:login', method),
     onAuthEvent: (listener: (event: unknown) => void) => {
       const handler = (_event: unknown, value: unknown) => listener(value);

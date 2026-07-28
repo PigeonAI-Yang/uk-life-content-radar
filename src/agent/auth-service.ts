@@ -160,3 +160,37 @@ export class EncryptedApiKeyStore {
     return this.safeStorage.decryptString(Buffer.from(data.encryptedKey, 'base64'));
   }
 }
+
+export type CustomApiConfig = {
+  baseUrl: string;
+  model: string;
+  protocol: 'openai-responses';
+};
+
+export class CustomApiConfigStore {
+  constructor(private readonly filePath: string) {}
+
+  read(): CustomApiConfig | undefined {
+    if (!fs.existsSync(this.filePath)) return undefined;
+    const value = JSON.parse(fs.readFileSync(this.filePath, 'utf8')) as Partial<CustomApiConfig>;
+    if (!value.baseUrl || !value.model || value.protocol !== 'openai-responses') return undefined;
+    return value as CustomApiConfig;
+  }
+
+  save(input: { baseUrl: string; model: string }): CustomApiConfig {
+    const url = new URL(input.baseUrl.trim());
+    if (!['http:', 'https:'].includes(url.protocol) || !input.model.trim()) {
+      throw new BusinessError('INVALID_INPUT', '自定义 API 地址或模型无效', '填写 HTTP(S) 地址和模型名称');
+    }
+    const value: CustomApiConfig = {
+      baseUrl: url.href.replace(/\/$/, ''),
+      model: input.model.trim(),
+      protocol: 'openai-responses'
+    };
+    fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
+    const temporaryPath = `${this.filePath}.tmp`;
+    fs.writeFileSync(temporaryPath, JSON.stringify(value, null, 2));
+    fs.renameSync(temporaryPath, this.filePath);
+    return value;
+  }
+}

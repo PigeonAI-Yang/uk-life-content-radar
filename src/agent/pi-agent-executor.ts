@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { createAgentSession, defineTool, type AgentSession } from '@earendil-works/pi-coding-agent';
+import { createAgentSession, defineTool, ModelRuntime, type AgentSession } from '@earendil-works/pi-coding-agent';
+import type { CustomApiConfig } from './auth-service';
 import { Type } from 'typebox';
 import { BusinessError } from '../contracts/errors';
 import type { AgentExecutionRequest, AgentExecutionResult, AgentExecutor } from './agent-executor';
@@ -14,7 +15,7 @@ type PiAgentOptions = {
   helperPath: string;
   discoveryPath: string;
   skillPath: string;
-  apiKeyProvider?: () => string | undefined;
+  customApiProvider?: () => (CustomApiConfig & { apiKey: string }) | undefined;
 };
 
 function assistantSummary(messages: unknown[]) {
@@ -40,10 +41,37 @@ export class PiAgentExecutor implements AgentExecutor {
     const client = new Client({ name: 'content-media-terminal-pi', version: '0.1.0' });
     let session: AgentSession | undefined;
     let toolCalls = 0;
-    const previousApiKey = process.env.OPENAI_API_KEY;
+    const previousApiKey = process.env.CONTENT_TERMINAL_CUSTOM_API_KEY;
     try {
-      const apiKey = this.options.apiKeyProvider?.();
-      if (apiKey) process.env.OPENAI_API_KEY = apiKey;
+      const customApi = this.options.customApiProvider?.();
+      let modelRuntime: ModelRuntime | undefined;
+      let model;
+      if (customApi) {
+        process.env.CONTENT_TERMINAL_CUSTOM_API_KEY = customApi.apiKey;
+        fs.mkdirSync(this.options.agentDir, { recursive: true });
+        const modelsPath = path.join(this.options.agentDir, 'models.json');
+        fs.writeFileSync(modelsPath, JSON.stringify({
+          providers: {
+            'custom-api': {
+              baseUrl: customApi.baseUrl,
+              api: customApi.protocol,
+              apiKey: '$CONTENT_TERMINAL_CUSTOM_API_KEY',
+              authHeader: true,
+              models: [{
+                id: customApi.model,
+                name: customApi.model,
+                reasoning: true,
+                input: ['text', 'image'],
+                contextWindow: 200000,
+                maxTokens: 64000
+              }]
+            }
+          }
+        }, null, 2));
+        modelRuntime = await ModelRuntime.create({ modelsPath });
+        model = modelRuntime.getModel('custom-api', customApi.model);
+        if (!model) throw new BusinessError('AGENT_MODEL_UNAVAILABLE', '自定义 API 模型不可用', '检查接口地址和模型名称');
+      }
       await client.connect(new StdioClientTransport({
         command: this.options.executablePath,
         args: [this.options.helperPath],
@@ -86,7 +114,9 @@ export class PiAgentExecutor implements AgentExecutor {
         agentDir: this.options.agentDir,
         noTools: 'all',
         tools: ['terminal_mcp'],
-        customTools: [terminalMcp]
+        customTools: [terminalMcp],
+        modelRuntime,
+        model
       });
       session = created.session;
       const abort = () => { void session?.abort(); };
@@ -132,8 +162,8 @@ export class PiAgentExecutor implements AgentExecutor {
       }
       throw new BusinessError('AGENT_EXECUTION_FAILED', 'Pi 执行失败', message);
     } finally {
-      if (previousApiKey === undefined) delete process.env.OPENAI_API_KEY;
-      else process.env.OPENAI_API_KEY = previousApiKey;
+      if (previousApiKey === undefined) delete process.env.CONTENT_TERMINAL_CUSTOM_API_KEY;
+      else process.env.CONTENT_TERMINAL_CUSTOM_API_KEY = previousApiKey;
       session?.dispose();
       await client.close().catch(() => undefined);
     }

@@ -17,6 +17,11 @@ declare global {
         scanAuth(): Promise<unknown>;
         saveApiKey(apiKey: string): Promise<unknown>;
         importCodex(): Promise<unknown>;
+        getCustomApi(): Promise<unknown>;
+        saveCustomApi(input: { baseUrl: string; model: string; apiKey?: string }): Promise<unknown>;
+        importCockpit(): Promise<unknown>;
+        discoverModels(): Promise<unknown>;
+        testCustomApi(): Promise<unknown>;
         login(method: 'browser' | 'device_code'): Promise<unknown>;
         onAuthEvent(listener: (event: unknown) => void): () => void;
       };

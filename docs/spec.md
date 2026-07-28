@@ -307,9 +307,9 @@ Pi 只能通过现有 MCP stdio helper、Windows Named Pipe（微软系统命名
 
 ### 16.3 认证顺序
 
-认证发现顺序为 Pi 自身 ChatGPT Plus/Pro 登录、本机 Codex（代码智能体）登录、Pi 官方 OAuth（开放授权）或设备码登录、用户 API Key。检测到凭据文件只表示候选存在；只有真实模型连接成功才能标记有效。
+认证发现顺序为已保存的自定义兼容 API、本机 CockpitTools 聚合服务、Pi 自身 ChatGPT Plus/Pro 登录、本机 Codex（代码智能体）登录、Pi 官方 OAuth（开放授权）或设备码登录。检测到凭据文件只表示候选存在；只有真实模型连接成功才能标记有效。
 
-API Key 使用 Electron `safeStorage` 调用 Windows DPAPI 加密后保存在应用配置目录，不进入 SQLite（本地数据库）、业务目录、日志或任务回执。
+自定义 API 支持填写 OpenAI Responses 兼容的接口地址、API Key 和模型，也可从本机 CockpitTools 导入当前监听地址、模型清单和访问密钥。API Key 使用 Electron `safeStorage` 调用 Windows DPAPI 加密后保存在应用配置目录，不进入 SQLite（本地数据库）、业务目录、日志或任务回执；接口地址、协议和模型单独透明保存。
 
 ### 16.4 错误
 

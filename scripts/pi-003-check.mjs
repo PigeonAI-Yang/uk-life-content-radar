@@ -63,9 +63,15 @@ try {
   await page.getByText('Pi 接力工作').waitFor();
   await page.getByRole('button', { name: '设置' }).click();
   await page.getByRole('heading', { name: 'Pi 工作助手' }).waitFor();
-  for (const name of ['扫描本机登录', '使用本机 Codex 登录', '订阅登录', '验证码登录', '加密保存']) {
+  for (const name of [
+    '扫描本机登录', '使用本机 Codex 登录', '订阅登录', '验证码登录',
+    '导入 CockpitTools', '保存 API 配置', '读取模型', '测试连接'
+  ]) {
     await page.getByRole('button', { name }).waitFor();
   }
+  await page.getByLabel('自定义 API 地址').waitFor();
+  await page.getByLabel('自定义 API Key').waitFor();
+  await page.getByLabel('自定义 API 模型').waitFor();
   const auth = await page.evaluate(() => globalThis.terminal.agent.scanAuth());
   await page.screenshot({ path: screenshotPath, fullPage: true });
   const approval = await dispatch('strategy.get', { id: proposal.result.id });
@@ -76,7 +82,7 @@ try {
     taskId: tasks.result.items[0].id, auth, approval: approval.result, screenshot: screenshotPath,
     checks: {
       approvalCreatesOneAgentTask: true, taskUi: true, authUi: true,
-      codexImportEntry: true, oauthEntries: true, encryptedApiKeyEntry: true, failureKeepsApproval: true
+      codexImportEntry: true, oauthEntries: true, customApiEntry: true, failureKeepsApproval: true
     }
   };
   writeFileSync(resolve(receiptDirectory, 'result.json'), JSON.stringify(result, null, 2));

@@ -59,7 +59,7 @@
 | PI-001 | Pi 产品契约、依赖、认证探测与失败实验 | Pi Agent 执行内核 | BIZ-007 | completed（已完成） |
 | PI-002 | 持久 Agent 任务、Pi Runner、MCP 工具链与重启恢复 | Pi Agent 执行内核 | PI-001 | completed（已完成） |
 | PI-003 | 批准触发、任务与设置界面、取消和错误状态 | Pi Agent 执行内核 | PI-002 | completed（已完成） |
-| PI-004 | 真实订阅、安装应用与自动接力验收 | Pi Agent 执行内核 | PI-003 | in_progress（执行中） |
+| PI-004 | 真实自定义 API、安装应用与自动接力验收 | Pi Agent 执行内核 | PI-003 | completed（已完成） |
 
 ## 3. 任务详情
 
@@ -482,7 +482,7 @@
 
 - PRD、SPEC、PLAN、架构和验证说明明确 Pi 是固定后台 Agent 执行内核，不建设通用适配层或软件内聊天窗口。
 - 锁定 Pi SDK 依赖并证明 Electron 主进程可加载。
-- 认证探测按 Pi 登录、本机 Codex 登录、Pi 官方 OAuth/设备码、API Key 的顺序返回自然中文状态。
+- 认证探测支持自定义兼容 API、CockpitTools 导入、Pi 登录、本机 Codex 登录和 Pi 官方 OAuth/设备码，并返回自然中文状态。
 - API Key 使用 Electron `safeStorage` 与 Windows DPAPI 加密，不进入数据库、业务目录、日志或回执。
 
 失败实验：不存在任何凭据时必须返回 `AGENT_AUTH_REQUIRED`，不得把检测到凭据文件描述为登录有效。
@@ -507,7 +507,7 @@
 交付：
 
 - 策略批准成功后创建唯一 Pi 任务，界面立即显示任务标识与排队、执行、完成、需要处理或失败状态。
-- 设置页显示 Pi、模型、认证方式、扫描已有登录、登录、API Key 和连接测试。
+- 设置页显示 Pi、模型、自定义 API 地址、CockpitTools 导入、认证方式、扫描已有登录、登录、API Key 和连接测试。
 - 任务页显示自然中文动作、真实产物、错误和取消入口，不显示思维过程、令牌或原始工具日志。
 - 最终发布批准仍只由人类完成，Pi 不获得策略批准或最终发布批准工具。
 
@@ -515,13 +515,13 @@
 
 回执：`artifacts/task-receipts/PI-003/`。
 
-### PI-004 真实订阅、安装应用与自动接力验收
+### PI-004 真实自定义 API、安装应用与自动接力验收
 
 本任务只做最终验收，不新增功能、依赖、迁移、页面或状态；发现失败退回 PI-001 至 PI-003 的责任任务。
 
 只执行：
 
-1. 真实 ChatGPT Plus/Pro（Codex）订阅登录；
+1. 真实 CockpitTools 或用户配置的 OpenAI Responses 兼容 API 完成模型连接；订阅登录作为可选路径保留；
 2. 真实打包 Windows 应用中批准策略；
 3. Pi 自动读取正式策略并通过真实 MCP 执行下一步；
 4. SQLite、任务事件、业务文件和界面结果一致；
