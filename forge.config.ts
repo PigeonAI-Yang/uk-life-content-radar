@@ -14,6 +14,7 @@ const config: ForgeConfig = {
     executableName: 'content-media-terminal',
     extraResource: [
       'build/mcp-helper.cjs',
+      'skills/content-business-partner',
       'node_modules/@img/sharp-win32-x64/lib/libvips-42.dll',
       'node_modules/@img/sharp-win32-x64/lib/libvips-cpp-8.18.3.dll'
     ]

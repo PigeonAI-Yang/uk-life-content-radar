@@ -1,9 +1,10 @@
 import type Database from 'better-sqlite3';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { BusinessError } from '../contracts/errors';
 import { requestHash } from '../business/request-hash';
+import type { AgentExecutor } from '../agent/agent-executor';
 
 type TaskRow = {
   id: string;
@@ -36,6 +37,10 @@ function mapTask(row: TaskRow) {
 }
 
 export class TaskService {
+  private agentExecutor?: AgentExecutor;
+  private activeAgentTaskId?: string;
+  private activeAgentAbort?: AbortController;
+
   constructor(
     private readonly database: Database.Database,
     private readonly rootPath: string
@@ -43,23 +48,45 @@ export class TaskService {
     this.recoverInterrupted();
   }
 
+  setAgentExecutor(executor: AgentExecutor) {
+    this.agentExecutor = executor;
+    const interrupted = this.database.prepare(
+      "SELECT id, parameters_json FROM tasks WHERE type='agent.execute' AND status='interrupted' ORDER BY updated_at, id"
+    ).all() as { id: string; parameters_json: string }[];
+    for (const row of interrupted) {
+      const parameters = JSON.parse(row.parameters_json) as Record<string, unknown>;
+      if (Number(parameters.resumeCount ?? 0) >= 1) continue;
+      parameters.resumeCount = Number(parameters.resumeCount ?? 0) + 1;
+      this.database.prepare(
+        "UPDATE tasks SET status='queued', progress=0, parameters_json=?, temporary_result='resume:queued', updated_at=? WHERE id=?"
+      ).run(JSON.stringify(parameters), new Date().toISOString(), row.id);
+    }
+    this.runNextAgent();
+  }
+
   start(input: Record<string, unknown>) {
-    if (!['file.write', 'file.write_batch'].includes(String(input.type))) {
+    if (!['file.write', 'file.write_batch', 'agent.execute'].includes(String(input.type))) {
       throw new BusinessError('INVALID_INPUT', `不支持的任务类型: ${String(input.type)}`, '使用已登记的任务类型');
     }
     const parameters = input.parameters as Record<string, unknown>;
-    const paths = input.type === 'file.write'
-      ? [String(parameters.relativePath ?? '')]
-      : ((parameters.items as Record<string, unknown>[] | undefined) ?? []).map((item) => String(item.relativePath ?? ''));
-    if (!paths.length || paths.some((relativePath) => {
-      const relative = path.relative(this.rootPath, path.resolve(this.rootPath, relativePath));
-      return !relativePath || relative.startsWith('..') || path.isAbsolute(relative);
-    })) {
-      throw new BusinessError('INVALID_INPUT', '任务输出必须位于业务根目录内', '使用业务根目录内的相对路径');
-    }
-    const durationMs = Number(parameters.durationMs ?? 0);
-    if (!Number.isInteger(durationMs) || durationMs < 0 || durationMs > 60_000) {
-      throw new BusinessError('INVALID_INPUT', '任务时长必须为 0 至 60000 毫秒整数', '修正 durationMs');
+    if (input.type === 'agent.execute') {
+      if (!String(parameters.accountId ?? '') || !String(parameters.goal ?? '') || !String(parameters.triggerEvent ?? '')) {
+        throw new BusinessError('INVALID_INPUT', 'Pi 任务缺少账号、目标或触发事件', '补充 accountId、goal 和 triggerEvent');
+      }
+    } else {
+      const paths = input.type === 'file.write'
+        ? [String(parameters.relativePath ?? '')]
+        : ((parameters.items as Record<string, unknown>[] | undefined) ?? []).map((item) => String(item.relativePath ?? ''));
+      if (!paths.length || paths.some((relativePath) => {
+        const relative = path.relative(this.rootPath, path.resolve(this.rootPath, relativePath));
+        return !relativePath || relative.startsWith('..') || path.isAbsolute(relative);
+      })) {
+        throw new BusinessError('INVALID_INPUT', '任务输出必须位于业务根目录内', '使用业务根目录内的相对路径');
+      }
+      const durationMs = Number(parameters.durationMs ?? 0);
+      if (!Number.isInteger(durationMs) || durationMs < 0 || durationMs > 60_000) {
+        throw new BusinessError('INVALID_INPUT', '任务时长必须为 0 至 60000 毫秒整数', '修正 durationMs');
+      }
     }
 
     const caller = String(input.caller);
@@ -90,7 +117,10 @@ export class TaskService {
       `).run(caller, key, hash, JSON.stringify(created), now, now);
       return created;
     })();
-    if (task.status === 'queued') setTimeout(() => this.run(task.id), 0);
+    if (task.status === 'queued') {
+      if (task.type === 'agent.execute') this.runNextAgent();
+      else setTimeout(() => this.run(task.id), 0);
+    }
     return task;
   }
 
@@ -108,7 +138,7 @@ export class TaskService {
   }
 
   cancel(id: string) {
-    return this.database.transaction(() => {
+    const task = this.database.transaction(() => {
       const task = this.get(id);
       if (['succeeded', 'partial', 'failed', 'cancelled', 'interrupted'].includes(task.status)) {
         if (task.status === 'succeeded') throw new BusinessError('TASK_COMPLETED', '任务已完成', '读取任务结果', id);
@@ -123,9 +153,15 @@ export class TaskService {
       `).run(now, id);
       return this.get(id);
     })();
+    if (id === this.activeAgentTaskId) this.activeAgentAbort?.abort();
+    return task;
   }
 
   private run(id: string) {
+    if (this.get(id).type === 'agent.execute') {
+      void this.runAgent(id);
+      return;
+    }
     try {
       const task = this.database.transaction(() => {
         const current = this.get(id);
@@ -193,10 +229,86 @@ export class TaskService {
     const temporaryPath = this.temporaryPath(id);
     if (fs.existsSync(temporaryPath)) fs.rmSync(temporaryPath);
     const now = new Date().toISOString();
+    const businessError = error instanceof BusinessError
+      ? error.toJSON()
+      : { code: 'TASK_FAILED', message: error instanceof Error ? error.message : String(error) };
     this.database.prepare(`
       UPDATE tasks SET status = 'failed', error_json = ?, temporary_result = 'removed',
         updated_at = ? WHERE id = ? AND status IN ('queued', 'running')
-    `).run(JSON.stringify({ code: 'TASK_FAILED', message: error instanceof Error ? error.message : String(error) }), now, id);
+    `).run(JSON.stringify(businessError), now, id);
+  }
+
+  private runNextAgent() {
+    if (!this.agentExecutor || this.activeAgentTaskId) return;
+    const row = this.database.prepare(
+      "SELECT id FROM tasks WHERE type='agent.execute' AND status='queued' ORDER BY created_at, id LIMIT 1"
+    ).get() as { id: string } | undefined;
+    if (row) this.run(row.id);
+  }
+
+  private async runAgent(id: string) {
+    if (!this.agentExecutor || this.activeAgentTaskId) return;
+    const task = this.database.transaction(() => {
+      const current = this.get(id);
+      if (current.status !== 'queued') return current;
+      this.database.prepare(
+        "UPDATE tasks SET status='running', progress=10, temporary_result='agent:running', updated_at=? WHERE id=? AND status='queued'"
+      ).run(new Date().toISOString(), id);
+      return this.get(id);
+    })();
+    if (task.status !== 'running') return;
+
+    this.activeAgentTaskId = id;
+    this.activeAgentAbort = new AbortController();
+    const runDirectory = path.join(this.rootPath, 'agent-runs', id);
+    const eventPath = path.join(runDirectory, 'events.jsonl');
+    const resultPath = path.join(runDirectory, 'result.json');
+    fs.mkdirSync(runDirectory, { recursive: true });
+    fs.writeFileSync(eventPath, '', { flag: 'a' });
+    const parameters = task.parameters as Record<string, unknown>;
+    try {
+      const result = await this.agentExecutor.execute({
+        taskId: id,
+        accountId: String(parameters.accountId),
+        goal: String(parameters.goal),
+        triggerEvent: String(parameters.triggerEvent),
+        objectId: parameters.objectId ? String(parameters.objectId) : undefined,
+        objectVersion: parameters.objectVersion === undefined ? undefined : Number(parameters.objectVersion),
+        signal: this.activeAgentAbort.signal,
+        onEvent: (event) => fs.appendFileSync(eventPath, `${JSON.stringify(event)}\n`)
+      });
+      const payload = {
+        ...result,
+        files: [this.fileReadback(eventPath)]
+      };
+      fs.writeFileSync(`${resultPath}.tmp`, JSON.stringify(payload, null, 2));
+      fs.renameSync(`${resultPath}.tmp`, resultPath);
+      payload.files.push(this.fileReadback(resultPath));
+      this.database.prepare(`
+        UPDATE tasks SET status='succeeded', progress=100, result_json=?, temporary_result='agent:committed',
+          updated_at=? WHERE id=? AND status='running'
+      `).run(JSON.stringify(payload), new Date().toISOString(), id);
+    } catch (error) {
+      fs.writeFileSync(`${resultPath}.tmp`, JSON.stringify({
+        status: this.activeAgentAbort.signal.aborted ? 'cancelled' : 'failed',
+        error: error instanceof BusinessError ? error.toJSON() : { message: error instanceof Error ? error.message : String(error) }
+      }, null, 2));
+      fs.renameSync(`${resultPath}.tmp`, resultPath);
+      if (this.activeAgentAbort.signal.aborted) {
+        this.database.prepare(
+          "UPDATE tasks SET status='cancelled', progress=100, result_json=?, temporary_result='agent:cancelled', updated_at=? WHERE id=? AND status='running'"
+        ).run(JSON.stringify({ files: [this.fileReadback(resultPath)] }), new Date().toISOString(), id);
+      } else {
+        this.fail(id, error);
+        this.database.prepare(
+          "UPDATE tasks SET result_json=? WHERE id=? AND status='failed'"
+        ).run(JSON.stringify({ files: [this.fileReadback(eventPath), this.fileReadback(resultPath)] }), id);
+      }
+    } finally {
+      this.activeAgentTaskId = undefined;
+      this.activeAgentAbort = undefined;
+      this.runNextAgent();
+    }
   }
 
   private recoverInterrupted() {
@@ -214,5 +326,17 @@ export class TaskService {
 
   private temporaryPath(id: string) {
     return path.join(this.rootPath, '.content-terminal', 'tmp', `${id}.tmp`);
+  }
+
+  private fileReadback(filePath: string) {
+    const content = fs.readFileSync(filePath);
+    const stats = fs.statSync(filePath);
+    return {
+      filePath: path.resolve(filePath),
+      byteSize: stats.size,
+      fileMtime: stats.mtime.toISOString(),
+      sha256: createHash('sha256').update(content).digest('hex'),
+      fileStatus: 'present'
+    };
   }
 }

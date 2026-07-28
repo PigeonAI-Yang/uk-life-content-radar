@@ -47,7 +47,8 @@
     "test:biz-006": "node scripts/biz-006-check.mjs",
     "test:biz-007": "node scripts/biz-007-check.mjs",
     "test:biz-008": "node scripts/biz-008-check.mjs",
-    "test:pi-001": "node scripts/pi-001-check.mjs"
+    "test:pi-001": "node scripts/pi-001-check.mjs",
+    "test:pi-002": "node scripts/pi-002-check.mjs"
   },
   "devDependencies": {
     "@electron-forge/cli": "7.11.2",
@@ -92,6 +93,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "sharp": "0.35.3",
+    "typebox": "1.1.38",
     "zod": "4.4.3"
   }
 }

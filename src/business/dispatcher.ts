@@ -18,6 +18,7 @@ import { BusinessManagementService } from './business-management-service';
 import { CustomerService } from './customer-service';
 import { BusinessSnapshotService } from './business-snapshot-service';
 import { IntelligenceService } from './intelligence-service';
+import type { AgentExecutor } from '../agent/agent-executor';
 
 type Account = {
   id: string;
@@ -80,6 +81,10 @@ export class CommandDispatcher {
     this.customers = new CustomerService(database, rootPath);
     this.snapshot = new BusinessSnapshotService(database, rootPath);
     this.intelligence = new IntelligenceService(database);
+  }
+
+  setAgentExecutor(executor: AgentExecutor) {
+    this.tasks.setAgentExecutor(executor);
   }
 
   async dispatch(name: string, input: unknown): Promise<DispatchResult> {

@@ -4,5 +4,8 @@ import { nativeRules, typescriptRules } from './webpack.rules';
 export const mainConfig: Configuration = {
   entry: './src/main/index.ts',
   module: { rules: [...nativeRules, ...typescriptRules] },
-  resolve: { extensions: ['.js', '.ts', '.jsx', '.tsx', '.css', '.json'] }
+  resolve: {
+    extensions: ['.js', '.ts', '.jsx', '.tsx', '.css', '.json'],
+    conditionNames: ['import', 'module', 'webpack', '...']
+  }
 };

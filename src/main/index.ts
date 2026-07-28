@@ -8,6 +8,7 @@ import { BusinessError } from '../contracts/errors';
 import { startPipeServer } from './pipe-server';
 import { BrowserManager } from './browser-manager';
 import { runSharpProbe } from './sharp-probe';
+import { PiAgentExecutor } from '../agent/pi-agent-executor';
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
@@ -61,6 +62,22 @@ void app.whenReady().then(() => {
   const database = new AppDatabase();
   const configPath = path.join(app.getPath('userData'), 'root.json');
   let dispatcher: CommandDispatcher | undefined;
+  const pipeState: { current?: ReturnType<typeof startPipeServer> } = {};
+  const configureAgent = () => {
+    if (!dispatcher || !pipeState.current) return;
+    dispatcher.setAgentExecutor(new PiAgentExecutor({
+      cwd: app.getAppPath(),
+      agentDir: path.join(app.getPath('userData'), 'pi-agent'),
+      executablePath: process.execPath,
+      helperPath: app.isPackaged
+        ? path.join(process.resourcesPath, 'mcp-helper.cjs')
+        : path.resolve('build', 'mcp-helper.cjs'),
+      discoveryPath: pipeState.current.discoveryPath,
+      skillPath: app.isPackaged
+        ? path.join(process.resourcesPath, 'content-business-partner', 'SKILL.md')
+        : path.resolve('skills', 'content-business-partner', 'SKILL.md')
+    }));
+  };
   if (fs.existsSync(configPath)) {
     const saved = JSON.parse(fs.readFileSync(configPath, 'utf8')) as RootSettings;
     dispatcher = new CommandDispatcher(database.getConnection(saved.databasePath), saved.rootPath, browser);
@@ -72,6 +89,7 @@ void app.whenReady().then(() => {
   ipcMain.handle('settings:initialize-root', (_event, rootPath: string) => {
     const settings = database.initialize(rootPath, configPath);
     dispatcher = new CommandDispatcher(database.getConnection(settings.databasePath), settings.rootPath, browser);
+    configureAgent();
     return settings;
   });
   ipcMain.handle('settings:get', (): RootSettings | undefined => {
@@ -114,16 +132,17 @@ void app.whenReady().then(() => {
     fs.writeFileSync(filePath, image.toPNG());
     return filePath;
   });
-  const pipe = startPipeServer(app.getPath('userData'), (name, input) => {
+  pipeState.current = startPipeServer(app.getPath('userData'), (name, input) => {
     if (!dispatcher) {
       const error = new BusinessError('FILE_UNWRITABLE', '业务根目录尚未初始化', '先在设置中初始化业务根目录');
       return { ok: false, error: error.toJSON() };
     }
     return dispatcher.dispatch(name, input);
   });
+  configureAgent();
   app.once('before-quit', () => {
     quitting = true;
-    pipe.server.close();
+    pipeState.current?.server.close();
     database.close();
   });
   const receipt = process.env.CONTENT_TERMINAL_SMOKE_FILE;
